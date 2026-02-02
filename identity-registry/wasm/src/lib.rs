@@ -10,6 +10,7 @@
 // Total number of exported functions:   8
 
 #![no_std]
+#![cfg(not(test))]
 
 multiversx_sc_wasm_adapter::allocator!();
 multiversx_sc_wasm_adapter::panic_handler!();

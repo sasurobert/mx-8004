@@ -12,6 +12,9 @@ mod validation_proxy {
 
         #[view(getJobEmployer)]
         fn get_job_employer(&self, job_id: ManagedBuffer) -> ManagedAddress;
+
+        #[view(getJobAgentNonce)]
+        fn get_job_agent_nonce(&self, job_id: ManagedBuffer) -> u64;
     }
 }
 
@@ -60,7 +63,11 @@ pub trait ReputationRegistry {
         });
 
         let current_score = self.reputation_score(agent_nonce).get();
-        let new_score = (current_score * (total_jobs as u32 - 1) + rating) / total_jobs as u32;
+        // Calculate new score: ((current * (total - 1)) + rating) / total
+        let total_big = BigUint::from(total_jobs);
+        let prev_total = &total_big - 1u32;
+        let weighted_score = current_score * prev_total;
+        let new_score = (weighted_score + rating) / total_big;
 
         self.reputation_score(agent_nonce).set(&new_score);
         self.has_given_feedback(job_id).set(true);
@@ -75,9 +82,32 @@ pub trait ReputationRegistry {
         self.is_feedback_authorized(job_id, client).set(true);
     }
 
+    #[allow(deprecated)]
     #[endpoint(append_response)]
     fn append_response(&self, job_id: ManagedBuffer, response_uri: ManagedBuffer) {
-        // Only agent should respond
+        // 1. Get Agent Nonce from Validation Registry
+        let validation_addr = self.validation_contract_address().get();
+        let agent_nonce: u64 = self
+            .validation_proxy(validation_addr)
+            .get_job_agent_nonce(job_id.clone())
+            .execute_on_dest_context();
+
+        require!(agent_nonce != 0, "Job not found or not initialized");
+
+        // 2. Get Agent Owner from Identity Registry
+        let identity_addr = self.identity_contract_address().get();
+        let agent_details: identity_proxy::AgentDetails<Self::Api> = self
+            .identity_proxy(identity_addr)
+            .get_agent(agent_nonce)
+            .execute_on_dest_context();
+
+        // 3. Verify Caller
+        let caller = self.blockchain().get_caller();
+        require!(
+            caller == agent_details.owner,
+            "Only the agent owner can respond"
+        );
+
         self.agent_response(job_id).set(response_uri);
     }
 
@@ -97,6 +127,10 @@ pub trait ReputationRegistry {
     fn validation_contract_address(&self) -> SingleValueMapper<ManagedAddress>;
 
     #[view]
+    #[storage_mapper("identityContractAddress")]
+    fn identity_contract_address(&self) -> SingleValueMapper<ManagedAddress>;
+
+    #[view]
     #[storage_mapper("hasGivenFeedback")]
     fn has_given_feedback(&self, job_id: ManagedBuffer) -> SingleValueMapper<bool>;
 
@@ -114,4 +148,27 @@ pub trait ReputationRegistry {
 
     #[proxy]
     fn validation_proxy(&self, sc_address: ManagedAddress) -> validation_proxy::Proxy<Self::Api>;
+
+    #[proxy]
+    fn identity_proxy(&self, sc_address: ManagedAddress) -> identity_proxy::Proxy<Self::Api>;
+}
+
+mod identity_proxy {
+    multiversx_sc::imports!();
+    multiversx_sc::derive_imports!();
+
+    #[type_abi]
+    #[derive(TopDecode, TopEncode, NestedDecode, NestedEncode, Clone, PartialEq, Debug)]
+    pub struct AgentDetails<M: ManagedTypeApi> {
+        pub name: ManagedBuffer<M>,
+        pub uri: ManagedBuffer<M>,
+        pub public_key: ManagedBuffer<M>,
+        pub owner: ManagedAddress<M>,
+    }
+
+    #[multiversx_sc::proxy]
+    pub trait IdentityRegistry {
+        #[view(getAgent)]
+        fn get_agent(&self, nonce: u64) -> AgentDetails<Self::Api>;
+    }
 }

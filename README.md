@@ -7,6 +7,18 @@
 
 ---
 
+## 🌟 Feature Highlights (v2.0)
+
+### Identity Registry
+- **Soulbound Identity NFTs**: Agents are issued non-transferable NFTs (`ESDTRoleNFTCreate`), ensuring identity permanence.
+- **Dynamic Attributes**: Agent metadata (Name, URI, Public Key) is stored directly in NFT attributes and can be updated by the owner.
+- **Async Issuance**: Supports asynchronous callbacks for token issuance, robust against gas failures.
+
+### Security Enhancements
+- **Strict Access Control**: `verify_job` is now protected by `#[only_owner]` (Oracle).
+- **Cross-Contract Verification**: `ReputationRegistry` now verifies `append_response` calls by cross-referencing `ValidationRegistry` (for job existence) and `IdentityRegistry` (for agent ownership).
+- **Safe Arithmetic**: All financial and scoring calculations use `BigUint` and strict `TimestampSeconds` types to prevent overflows and type confusion.
+
 ## 🏛 Architecture
 
 The MX-8004 standard is composed of three primary registries:

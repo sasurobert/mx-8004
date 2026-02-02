@@ -40,6 +40,7 @@ pub trait ValidationRegistry {
         self.job_status(job_id).set(JobStatus::Pending);
     }
 
+    #[only_owner]
     #[endpoint(verify_job)]
     fn verify_job(&self, job_id: ManagedBuffer) {
         // Access control for Oracle is assumed for now

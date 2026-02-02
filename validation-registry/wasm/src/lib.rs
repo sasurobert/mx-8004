@@ -1,5 +1,6 @@
 #![no_std]
 #![cfg(not(test))]
+#![cfg(not(test))]
 
 #[cfg(not(test))]
 multiversx_sc_wasm_adapter::allocator!();
