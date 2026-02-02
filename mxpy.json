@@ -1,0 +1,15 @@
+{
+    "configurations": {
+        "default": {
+            "proxy": "https://devnet-gateway.multiversx.com",
+            "chainID": "D"
+        }
+    },
+    "contract": {
+        "deploy": {
+            "verbose": true,
+            "recall-nonce": true,
+            "gas-limit": 60000000
+        }
+    }
+}

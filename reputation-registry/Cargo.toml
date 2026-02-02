@@ -1,0 +1,22 @@
+[package]
+name = "reputation-registry"
+version = "0.1.0"
+authors = ["Antigravity"]
+edition = "2021"
+publish = false
+
+[dependencies.multiversx-sc]
+version = "0.54.0"
+
+[dev-dependencies.multiversx-sc-scenario]
+version = "0.54.0"
+
+[dev-dependencies.validation-registry]
+path = "../validation-registry"
+
+[dev-dependencies.identity-registry]
+path = "../identity-registry"
+
+[lib]
+path = "src/lib.rs"
+name = "reputation_registry"

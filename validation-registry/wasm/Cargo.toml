@@ -1,0 +1,17 @@
+[package]
+name = "validation-registry-wasm"
+version = "0.1.0"
+authors = ["Antigravity"]
+edition = "2021"
+publish = false
+
+[dependencies.validation-registry]
+path = ".."
+
+[dependencies.multiversx-sc-wasm-adapter]
+version = "0.54.0"
+
+[lib]
+name = "validation_registry_wasm"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
