@@ -5,9 +5,9 @@
 ////////////////////////////////////////////////////
 
 // Init:                                 1
-// Endpoints:                           10
+// Endpoints:                            6
 // Async Callback (empty):               1
-// Total number of exported functions:  12
+// Total number of exported functions:   8
 
 #![no_std]
 
@@ -23,11 +23,7 @@ multiversx_sc_wasm_adapter::endpoints! {
         verify_job => verify_job
         clean_old_jobs => clean_old_jobs
         is_job_verified => is_job_verified
-        getJobProof => job_proof
-        getJobStatus => job_status
-        getJobEmployer => job_employer
-        getJobCreationTimestamp => job_creation_timestamp
-        getJobAgentNonce => job_agent_nonce
+        getJobData => get_job_data
     )
 }
 

@@ -2,7 +2,7 @@ use multiversx_sc::types::{BigUint, ManagedAddress, ManagedBuffer};
 use multiversx_sc_scenario::rust_biguint;
 use multiversx_sc_scenario::testing_framework::BlockchainStateWrapper;
 use reputation_registry::*;
-use validation_registry::{self, JobStatus, ValidationRegistry};
+use validation_registry::{self, ValidationRegistry};
 
 const REP_WASM_PATH: &str = "output/reputation-registry.wasm";
 const VAL_WASM_PATH: &str = "output/validation-registry.wasm";
@@ -44,7 +44,7 @@ fn test_reputation_flow() {
         .execute_tx(&user_addr, &rep_wrapper, &rust_biguint!(0), |sc| {
             sc.submit_feedback(ManagedBuffer::from("job_1"), 1u64, BigUint::from(5u64));
         })
-        .assert_user_error("Job not verified");
+        .assert_user_error("Job not found or not initialized");
 
     // 5. Initialize Job and Authorize Feedback
     b_mock
@@ -62,8 +62,7 @@ fn test_reputation_flow() {
     // 6. Verify job in Validation Registry
     b_mock
         .execute_tx(&owner_addr, &val_wrapper, &rust_biguint!(0), |sc| {
-            sc.job_status(ManagedBuffer::from("job_1"))
-                .set(JobStatus::Verified);
+            sc.verify_job(ManagedBuffer::from("job_1"));
         })
         .assert_ok();
 

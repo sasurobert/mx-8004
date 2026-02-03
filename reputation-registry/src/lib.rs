@@ -17,26 +17,26 @@ pub trait ReputationRegistry {
         let validation_addr = self.validation_contract_address().get();
 
         // 1. Authenticity: Verify job is complete
-        let is_verified = self
+        let job_data = self
             .tx()
             .to(&validation_addr)
             .typed(validation_registry_proxy::ValidationRegistryProxy)
-            .is_job_verified(&job_id)
+            .get_job_data(&job_id)
             .returns(ReturnsResult)
-            .sync_call();
+            .sync_call()
+            .into_option()
+            .unwrap_or_else(|| sc_panic!("Job not found or not initialized"));
 
-        require!(is_verified, "Job not verified");
+        require!(
+            job_data.status == validation_registry_proxy::JobStatus::Verified,
+            "Job not verified"
+        );
 
         // 2. Frontrunning Protection: Verify caller is the employer
-        let employer = self
-            .tx()
-            .to(&validation_addr)
-            .typed(validation_registry_proxy::ValidationRegistryProxy)
-            .job_employer(&job_id)
-            .returns(ReturnsResult)
-            .sync_call();
-
-        require!(caller == employer, "Only the employer can provide feedback");
+        require!(
+            caller == job_data.employer,
+            "Only the employer can provide feedback"
+        );
 
         // 3. Authorization Gate: Verify agent authorized this specific feedback
         require!(
@@ -79,15 +79,15 @@ pub trait ReputationRegistry {
     fn append_response(&self, job_id: ManagedBuffer, response_uri: ManagedBuffer) {
         // 1. Get Agent Nonce from Validation Registry
         let validation_addr = self.validation_contract_address().get();
-        let agent_nonce = self
+        let job_data = self
             .tx()
             .to(&validation_addr)
             .typed(validation_registry_proxy::ValidationRegistryProxy)
-            .job_agent_nonce(&job_id)
+            .get_job_data(&job_id)
             .returns(ReturnsResult)
-            .sync_call();
-
-        require!(agent_nonce != 0, "Job not found or not initialized");
+            .sync_call()
+            .into_option()
+            .unwrap_or_else(|| sc_panic!("Job not found or not initialized"));
 
         // 2. Get Agent Owner from Identity Registry
         let identity_addr = self.identity_contract_address().get();
@@ -95,7 +95,7 @@ pub trait ReputationRegistry {
             .tx()
             .to(&identity_addr)
             .typed(identity_registry_proxy::IdentityRegistryProxy)
-            .get_agent(agent_nonce)
+            .get_agent(job_data.agent_nonce)
             .returns(ReturnsResult)
             .sync_call();
 

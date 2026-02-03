@@ -133,75 +133,37 @@ where
             .original_result()
     }
 
-    pub fn job_proof<
+    pub fn get_job_data<
         Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
     >(
         self,
         job_id: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ManagedBuffer<Env::Api>> {
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, OptionalValue<JobData<Env::Api>>> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("getJobProof")
-            .argument(&job_id)
-            .original_result()
-    }
-
-    pub fn job_status<
-        Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
-    >(
-        self,
-        job_id: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, JobStatus> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("getJobStatus")
-            .argument(&job_id)
-            .original_result()
-    }
-
-    pub fn job_employer<
-        Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
-    >(
-        self,
-        job_id: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ManagedAddress<Env::Api>> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("getJobEmployer")
-            .argument(&job_id)
-            .original_result()
-    }
-
-    pub fn job_creation_timestamp<
-        Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
-    >(
-        self,
-        job_id: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, TimestampSeconds> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("getJobCreationTimestamp")
-            .argument(&job_id)
-            .original_result()
-    }
-
-    pub fn job_agent_nonce<
-        Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
-    >(
-        self,
-        job_id: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, u64> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("getJobAgentNonce")
+            .raw_call("getJobData")
             .argument(&job_id)
             .original_result()
     }
 }
 
 #[type_abi]
-#[derive(TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, PartialEq, Debug)]
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Debug)]
+pub struct JobData<Api>
+where
+    Api: ManagedTypeApi,
+{
+    pub status: JobStatus,
+    pub proof: ManagedBuffer<Api>,
+    pub employer: ManagedAddress<Api>,
+    pub creation_timestamp: TimestampMillis,
+    pub agent_nonce: u64,
+}
+
+#[type_abi]
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Debug)]
 pub enum JobStatus {
+    New,
     Pending,
     Verified,
 }
