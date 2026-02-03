@@ -3,47 +3,40 @@
 multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
 
-mod validation_proxy {
-    multiversx_sc::imports!();
-    #[multiversx_sc::proxy]
-    pub trait ValidationRegistry {
-        #[view(is_job_verified)]
-        fn is_job_verified(&self, job_id: ManagedBuffer) -> bool;
-
-        #[view(getJobEmployer)]
-        fn get_job_employer(&self, job_id: ManagedBuffer) -> ManagedAddress;
-
-        #[view(getJobAgentNonce)]
-        fn get_job_agent_nonce(&self, job_id: ManagedBuffer) -> u64;
-    }
-}
+mod identity_registry_proxy;
+mod validation_registry_proxy;
 
 #[multiversx_sc::contract]
 pub trait ReputationRegistry {
     #[init]
     fn init(&self) {}
 
-    #[allow(deprecated)]
     #[endpoint(submit_feedback)]
     fn submit_feedback(&self, job_id: ManagedBuffer, agent_nonce: u64, rating: BigUint) {
         let caller = self.blockchain().get_caller();
         let validation_addr = self.validation_contract_address().get();
 
         // 1. Authenticity: Verify job is complete
-        let is_verified: bool = self
-            .validation_proxy(validation_addr.clone())
-            .is_job_verified(job_id.clone())
-            .execute_on_dest_context(); // #[allow(deprecated)]
+        let job_data = self
+            .tx()
+            .to(&validation_addr)
+            .typed(validation_registry_proxy::ValidationRegistryProxy)
+            .get_job_data(&job_id)
+            .returns(ReturnsResult)
+            .sync_call()
+            .into_option()
+            .unwrap_or_else(|| sc_panic!("Job not found or not initialized"));
 
-        require!(is_verified, "Job not verified");
+        require!(
+            job_data.status == validation_registry_proxy::JobStatus::Verified,
+            "Job not verified"
+        );
 
         // 2. Frontrunning Protection: Verify caller is the employer
-        let employer: ManagedAddress = self
-            .validation_proxy(validation_addr)
-            .get_job_employer(job_id.clone())
-            .execute_on_dest_context(); // #[allow(deprecated)]
-
-        require!(caller == employer, "Only the employer can provide feedback");
+        require!(
+            caller == job_data.employer,
+            "Only the employer can provide feedback"
+        );
 
         // 3. Authorization Gate: Verify agent authorized this specific feedback
         require!(
@@ -82,24 +75,29 @@ pub trait ReputationRegistry {
         self.is_feedback_authorized(job_id, client).set(true);
     }
 
-    #[allow(deprecated)]
     #[endpoint(append_response)]
     fn append_response(&self, job_id: ManagedBuffer, response_uri: ManagedBuffer) {
         // 1. Get Agent Nonce from Validation Registry
         let validation_addr = self.validation_contract_address().get();
-        let agent_nonce: u64 = self
-            .validation_proxy(validation_addr)
-            .get_job_agent_nonce(job_id.clone())
-            .execute_on_dest_context();
-
-        require!(agent_nonce != 0, "Job not found or not initialized");
+        let job_data = self
+            .tx()
+            .to(&validation_addr)
+            .typed(validation_registry_proxy::ValidationRegistryProxy)
+            .get_job_data(&job_id)
+            .returns(ReturnsResult)
+            .sync_call()
+            .into_option()
+            .unwrap_or_else(|| sc_panic!("Job not found or not initialized"));
 
         // 2. Get Agent Owner from Identity Registry
         let identity_addr = self.identity_contract_address().get();
-        let agent_details: identity_proxy::AgentDetails<Self::Api> = self
-            .identity_proxy(identity_addr)
-            .get_agent(agent_nonce)
-            .execute_on_dest_context();
+        let agent_details = self
+            .tx()
+            .to(&identity_addr)
+            .typed(identity_registry_proxy::IdentityRegistryProxy)
+            .get_agent(job_data.agent_nonce)
+            .returns(ReturnsResult)
+            .sync_call();
 
         // 3. Verify Caller
         let caller = self.blockchain().get_caller();
@@ -145,30 +143,4 @@ pub trait ReputationRegistry {
     #[view]
     #[storage_mapper("agentResponse")]
     fn agent_response(&self, job_id: ManagedBuffer) -> SingleValueMapper<ManagedBuffer>;
-
-    #[proxy]
-    fn validation_proxy(&self, sc_address: ManagedAddress) -> validation_proxy::Proxy<Self::Api>;
-
-    #[proxy]
-    fn identity_proxy(&self, sc_address: ManagedAddress) -> identity_proxy::Proxy<Self::Api>;
-}
-
-mod identity_proxy {
-    multiversx_sc::imports!();
-    multiversx_sc::derive_imports!();
-
-    #[type_abi]
-    #[derive(TopDecode, TopEncode, NestedDecode, NestedEncode, Clone, PartialEq, Debug)]
-    pub struct AgentDetails<M: ManagedTypeApi> {
-        pub name: ManagedBuffer<M>,
-        pub uri: ManagedBuffer<M>,
-        pub public_key: ManagedBuffer<M>,
-        pub owner: ManagedAddress<M>,
-    }
-
-    #[multiversx_sc::proxy]
-    pub trait IdentityRegistry {
-        #[view(getAgent)]
-        fn get_agent(&self, nonce: u64) -> AgentDetails<Self::Api>;
-    }
 }

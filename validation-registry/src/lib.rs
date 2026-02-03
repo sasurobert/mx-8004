@@ -3,11 +3,24 @@
 multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
 
+const THREE_DAYS: DurationMillis = DurationMillis::new(3 * 24 * 60 * 60 * 1000);
+
 #[type_abi]
-#[derive(TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, PartialEq, Debug)]
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Debug)]
 pub enum JobStatus {
+    New,
     Pending,
     Verified,
+}
+
+#[type_abi]
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Debug)]
+pub struct JobData<M: ManagedTypeApi> {
+    pub status: JobStatus,
+    pub proof: ManagedBuffer<M>,
+    pub employer: ManagedAddress<M>,
+    pub creation_timestamp: TimestampMillis,
+    pub agent_nonce: u64,
 }
 
 #[multiversx_sc::contract]
@@ -17,58 +30,75 @@ pub trait ValidationRegistry {
 
     #[endpoint(init_job)]
     fn init_job(&self, job_id: ManagedBuffer, agent_nonce: u64) {
-        require!(
-            self.job_employer(job_id.clone()).is_empty(),
-            "Job already initialized"
-        );
-        self.job_employer(job_id.clone())
-            .set(self.blockchain().get_caller());
-        self.job_creation_timestamp(job_id.clone())
-            .set(self.blockchain().get_block_timestamp_seconds());
-        self.job_agent_nonce(job_id).set(agent_nonce);
+        let job_mapper = self.job_data(&job_id);
+        require!(job_mapper.is_empty(), "Job already initialized");
+
+        job_mapper.set(JobData {
+            status: JobStatus::New,
+            proof: ManagedBuffer::new(),
+            employer: self.blockchain().get_caller(),
+            creation_timestamp: self.blockchain().get_block_timestamp_millis(),
+            agent_nonce,
+        });
     }
 
     #[endpoint(submit_proof)]
     fn submit_proof(&self, job_id: ManagedBuffer, proof: ManagedBuffer) {
-        let agent_nonce = self.job_agent_nonce(job_id.clone()).get();
-        require!(agent_nonce != 0, "Job not initialized");
+        let job_mapper = self.job_data(&job_id);
+        require!(!job_mapper.is_empty(), "Job does not exist");
 
         // In a real scenario, we'd check if caller owns agent_nonce
         // For this standard, we assume the agent submitter is verified via identity
 
-        self.job_proof(job_id.clone()).set(&proof);
-        self.job_status(job_id).set(JobStatus::Pending);
+        job_mapper.update(|job| {
+            job.proof = proof;
+            job.status = JobStatus::Pending;
+        });
     }
 
     #[only_owner]
     #[endpoint(verify_job)]
     fn verify_job(&self, job_id: ManagedBuffer) {
-        // Access control for Oracle is assumed for now
-        self.job_status(job_id.clone()).set(JobStatus::Verified);
+        let job_mapper = self.job_data(&job_id);
+        require!(!job_mapper.is_empty(), "Job does not exist");
 
-        let agent_nonce = self.job_agent_nonce(job_id.clone()).get();
-        self.job_verified_event(job_id, agent_nonce, JobStatus::Verified);
+        job_mapper.update(|job| {
+            // Access control for Oracle is assumed for now
+            job.status = JobStatus::Verified;
+
+            self.job_verified_event(job_id, job.agent_nonce, JobStatus::Verified);
+        });
     }
 
     #[endpoint(clean_old_jobs)]
     fn clean_old_jobs(&self, job_ids: MultiValueEncoded<ManagedBuffer>) {
-        let current_time = self.blockchain().get_block_timestamp_seconds();
-        let three_days = DurationSeconds::new(3 * 24 * 60 * 60);
+        let current_time = self.blockchain().get_block_timestamp_millis();
         for job_id in job_ids {
-            let ts = self.job_creation_timestamp(job_id.clone()).get();
-            if ts > TimestampSeconds::new(0) && current_time > ts + three_days {
-                self.job_proof(job_id.clone()).clear();
-                self.job_status(job_id.clone()).clear();
-                self.job_employer(job_id.clone()).clear();
-                self.job_creation_timestamp(job_id.clone()).clear();
-                self.job_agent_nonce(job_id).clear();
+            let job_mapper = self.job_data(&job_id);
+            if job_mapper.is_empty() {
+                continue;
+            }
+            let job_data = job_mapper.get();
+            if current_time > job_data.creation_timestamp + THREE_DAYS {
+                job_mapper.clear();
             }
         }
     }
 
     #[view(is_job_verified)]
     fn is_job_verified(&self, job_id: ManagedBuffer) -> bool {
-        self.job_status(job_id).get() == JobStatus::Verified
+        let job_mapper = self.job_data(&job_id);
+        !job_mapper.is_empty() && job_mapper.get().status == JobStatus::Verified
+    }
+
+    #[view(getJobData)]
+    fn get_job_data(&self, job_id: ManagedBuffer) -> OptionalValue<JobData<Self::Api>> {
+        let job_mapper = self.job_data(&job_id);
+        if job_mapper.is_empty() {
+            OptionalValue::None
+        } else {
+            OptionalValue::Some(job_mapper.get())
+        }
     }
 
     // Events
@@ -81,23 +111,6 @@ pub trait ValidationRegistry {
     );
 
     // Storage Mappers
-    #[view(getJobProof)]
-    #[storage_mapper("jobProof")]
-    fn job_proof(&self, job_id: ManagedBuffer) -> SingleValueMapper<ManagedBuffer>;
-
-    #[view(getJobStatus)]
-    #[storage_mapper("jobStatus")]
-    fn job_status(&self, job_id: ManagedBuffer) -> SingleValueMapper<JobStatus>;
-
-    #[view(getJobEmployer)]
-    #[storage_mapper("jobEmployer")]
-    fn job_employer(&self, job_id: ManagedBuffer) -> SingleValueMapper<ManagedAddress>;
-
-    #[view(getJobCreationTimestamp)]
-    #[storage_mapper("jobCreationTimestamp")]
-    fn job_creation_timestamp(&self, job_id: ManagedBuffer) -> SingleValueMapper<TimestampSeconds>;
-
-    #[view(getJobAgentNonce)]
-    #[storage_mapper("jobAgentNonce")]
-    fn job_agent_nonce(&self, job_id: ManagedBuffer) -> SingleValueMapper<u64>;
+    #[storage_mapper("jobData")]
+    fn job_data(&self, job_id: &ManagedBuffer) -> SingleValueMapper<JobData<Self::Api>>;
 }

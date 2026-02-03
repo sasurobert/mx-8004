@@ -2,8 +2,12 @@
 name = "reputation-registry"
 version = "0.1.0"
 authors = ["Antigravity"]
-edition = "2021"
+edition = "2024"
 publish = false
+
+[lib]
+path = "src/lib.rs"
+name = "reputation_registry"
 
 [dependencies.multiversx-sc]
 version = "0.64.1"
@@ -17,6 +21,3 @@ path = "../validation-registry"
 [dev-dependencies.identity-registry]
 path = "../identity-registry"
 
-[lib]
-path = "src/lib.rs"
-name = "reputation_registry"

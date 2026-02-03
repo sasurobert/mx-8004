@@ -1,0 +1,2 @@
+[[proxy]]
+path = "../reputation-registry/src/identity_registry_proxy.rs"
