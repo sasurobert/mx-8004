@@ -2,7 +2,7 @@
 name = "validation-registry"
 version = "0.1.0"
 authors = ["Antigravity"]
-edition = "2021"
+edition = "2024"
 publish = false
 
 [dependencies.multiversx-sc]

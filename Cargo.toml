@@ -1,13 +1,10 @@
 [workspace]
+resolver = "2"
 members = [
     "identity-registry",
-    "identity-registry/wasm",
     "identity-registry/meta",
     "validation-registry",
-    "validation-registry/wasm",
     "validation-registry/meta",
     "reputation-registry",
-    "reputation-registry/wasm",
     "reputation-registry/meta"
 ]
-resolver = "2"
