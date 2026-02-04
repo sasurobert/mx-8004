@@ -114,3 +114,24 @@ fn test_update_agent() {
         assert_eq!(agent.public_key, ManagedBuffer::from("new_public_key_hex"));
     });
 }
+
+use multiversx_sc_scenario::*;
+
+fn world() -> ScenarioWorld {
+    let mut blockchain = ScenarioWorld::new();
+    blockchain.register_contract(
+        "file:../identity-registry/output/identity-registry.wasm",
+        identity_registry::ContractBuilder,
+    );
+    blockchain
+}
+
+#[test]
+fn identity_full_flow_scen() {
+    world().run("../scenarios/identity_full_flow.scen.json");
+}
+
+#[test]
+fn simple_scen() {
+    world().run("../scenarios/simple.scen.json");
+}

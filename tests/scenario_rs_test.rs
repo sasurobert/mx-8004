@@ -21,3 +21,8 @@ fn world() -> ScenarioWorld {
 fn authenticity_loop_scen() {
     world().run("scenarios/authenticity_loop.scen.json");
 }
+
+#[test]
+fn identity_full_flow_scen() {
+    world().run("scenarios/identity_full_flow.scen.json");
+}

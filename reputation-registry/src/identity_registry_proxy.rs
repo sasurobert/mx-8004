@@ -81,11 +81,13 @@ where
         Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg2: ProxyArg<ManagedBuffer<Env::Api>>,
+        Arg3: ProxyArg<OptionalValue<ManagedVec<Env::Api, MetadataEntry<Env::Api>>>>,
     >(
         self,
         name: Arg0,
         uri: Arg1,
         public_key: Arg2,
+        metadata: Arg3,
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
@@ -93,6 +95,7 @@ where
             .argument(&name)
             .argument(&uri)
             .argument(&public_key)
+            .argument(&metadata)
             .original_result()
     }
 
@@ -100,11 +103,13 @@ where
         Arg0: ProxyArg<u64>,
         Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg2: ProxyArg<ManagedBuffer<Env::Api>>,
+        Arg3: ProxyArg<OptionalValue<ManagedVec<Env::Api, MetadataEntry<Env::Api>>>>,
     >(
         self,
         nonce: Arg0,
         new_uri: Arg1,
         new_public_key: Arg2,
+        metadata: Arg3,
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
@@ -112,6 +117,7 @@ where
             .argument(&nonce)
             .argument(&new_uri)
             .argument(&new_public_key)
+            .argument(&metadata)
             .original_result()
     }
 
@@ -151,6 +157,18 @@ where
 #[derive(
     TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, Clone, PartialEq, Debug,
 )]
+pub struct MetadataEntry<Api>
+where
+    Api: ManagedTypeApi,
+{
+    pub key: ManagedBuffer<Api>,
+    pub value: ManagedBuffer<Api>,
+}
+
+#[type_abi]
+#[derive(
+    TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, Clone, PartialEq, Debug,
+)]
 pub struct AgentDetails<Api>
 where
     Api: ManagedTypeApi,
@@ -159,6 +177,7 @@ where
     pub uri: ManagedBuffer<Api>,
     pub public_key: ManagedBuffer<Api>,
     pub owner: ManagedAddress<Api>,
+    pub metadata: ManagedVec<Api, MetadataEntry<Api>>,
 }
 
 #[type_abi]

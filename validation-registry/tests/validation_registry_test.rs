@@ -53,3 +53,19 @@ fn test_validation_flow() {
         assert!(sc.is_job_verified(ManagedBuffer::from("job_1")));
     });
 }
+
+use multiversx_sc_scenario::*;
+
+fn world() -> ScenarioWorld {
+    let mut blockchain = ScenarioWorld::new();
+    blockchain.register_contract(
+        "file:../validation-registry/output/validation-registry.wasm",
+        validation_registry::ContractBuilder,
+    );
+    blockchain
+}
+
+#[test]
+fn validation_full_flow_scen() {
+    world().run("../scenarios/validation_full_flow.scen.json");
+}

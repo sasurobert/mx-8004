@@ -1,0 +1,14 @@
+{
+    "name": "simple",
+    "steps": [
+        {
+            "step": "setState",
+            "accounts": {
+                "address:owner": {
+                    "nonce": "1",
+                    "balance": "0"
+                }
+            }
+        }
+    ]
+}
