@@ -59,6 +59,10 @@ use multiversx_sc_scenario::*;
 fn world() -> ScenarioWorld {
     let mut blockchain = ScenarioWorld::new();
     blockchain.register_contract(
+        "file:../identity-registry/output/identity-registry.wasm",
+        identity_registry::ContractBuilder,
+    );
+    blockchain.register_contract(
         "file:../validation-registry/output/validation-registry.wasm",
         validation_registry::ContractBuilder,
     );
@@ -68,4 +72,9 @@ fn world() -> ScenarioWorld {
 #[test]
 fn validation_full_flow_scen() {
     world().run("../scenarios/validation_full_flow.scen.json");
+}
+
+#[test]
+fn init_payment_verified_flow_scen() {
+    world().run("../scenarios/init_payment_verified_flow.scen.json");
 }

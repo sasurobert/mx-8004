@@ -5,9 +5,10 @@
 ////////////////////////////////////////////////////
 
 // Init:                                 1
-// Endpoints:                            6
+// Upgrade:                              1
+// Endpoints:                           11
 // Async Callback:                       1
-// Total number of exported functions:   8
+// Total number of exported functions:  14
 
 #![no_std]
 
@@ -18,12 +19,18 @@ multiversx_sc_wasm_adapter::endpoints! {
     identity_registry
     (
         init => init
+        upgrade => upgrade
         issue_token => issue_token
         register_agent => register_agent
         update_agent => update_agent
+        set_metadata => set_metadata
+        get_metadata => get_metadata
         get_agent => get_agent
+        get_agent_id => get_agent_id
         get_agent_token_id => agent_token_id
         agent_token_nonce => agent_token_nonce
+        get_agent_owner => agent_owner
+        get_agent_service_price => agent_service_price
     )
 }
 

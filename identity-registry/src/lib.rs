@@ -123,6 +123,7 @@ pub trait IdentityRegistry:
             .transfer();
 
         self.agent_id_by_address(&caller).set(nonce);
+        self.agent_owner(nonce).set(&caller);
         self.agent_registered_event(&caller, nonce, AgentRegisteredEventData { name, uri });
     }
 
@@ -150,6 +151,7 @@ pub trait IdentityRegistry:
 
         if let OptionalValue::Some(m) = metadata {
             details.metadata = m;
+            self.sync_pricing_metadata(nonce, &details.metadata);
         }
 
         self.send()
@@ -189,10 +191,29 @@ pub trait IdentityRegistry:
             details.metadata = new_metadata;
         }
 
+        self.sync_pricing_metadata(nonce, &details.metadata);
         self.send()
             .nft_update_attributes(&token_id, nonce, &details);
 
         self.metadata_updated_event(nonce);
+    }
+
+    fn sync_pricing_metadata(&self, nonce: u64, metadata: &ManagedVec<MetadataEntry<Self::Api>>) {
+        let price_prefix = ManagedBuffer::from(b"price:");
+        for entry in metadata.iter() {
+            if entry.key.len() > price_prefix.len() {
+                let key_prefix = entry.key.copy_slice(0, price_prefix.len()).unwrap();
+                if key_prefix == price_prefix {
+                    let service_id = entry
+                        .key
+                        .copy_slice(price_prefix.len(), entry.key.len() - price_prefix.len())
+                        .unwrap();
+                    let price = BigUint::top_decode(entry.value.clone())
+                        .unwrap_or_else(|_| BigUint::zero());
+                    self.agent_service_price(nonce, &service_id).set(&price);
+                }
+            }
+        }
     }
 
     /// Get a specific metadata value by key for an agent.
@@ -255,4 +276,16 @@ pub trait IdentityRegistry:
 
     #[storage_mapper("agentIdByAddress")]
     fn agent_id_by_address(&self, address: &ManagedAddress) -> SingleValueMapper<u64>;
+
+    #[view(get_agent_owner)]
+    #[storage_mapper("agentOwner")]
+    fn agent_owner(&self, nonce: u64) -> SingleValueMapper<ManagedAddress>;
+
+    #[view(get_agent_service_price)]
+    #[storage_mapper("agentServicePrice")]
+    fn agent_service_price(
+        &self,
+        nonce: u64,
+        service_id: &ManagedBuffer,
+    ) -> SingleValueMapper<BigUint>;
 }

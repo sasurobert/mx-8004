@@ -11,6 +11,9 @@ version = "0.64.1"
 [dev-dependencies.multiversx-sc-scenario]
 version = "0.64.1"
 
+[dev-dependencies.identity-registry]
+path = "../identity-registry"
+
 [lib]
 path = "src/lib.rs"
 name = "validation_registry"
