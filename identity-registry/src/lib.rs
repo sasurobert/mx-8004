@@ -88,18 +88,28 @@ pub trait IdentityRegistry:
             *n
         });
 
-        let metadata_vec = match metadata {
+        let mut metadata_vec = match metadata {
             OptionalValue::Some(m) => m,
             OptionalValue::None => ManagedVec::new(),
         };
+
+        // If metadata is empty, add a default entry for price:0
+        if metadata_vec.is_empty() {
+            metadata_vec.push(MetadataEntry {
+                key: ManagedBuffer::from("price:0"),
+                value: ManagedBuffer::from(BigUint::from(0u64).to_bytes_be()),
+            });
+        }
 
         let details = AgentDetails {
             name: name.clone(),
             uri: uri.clone(),
             public_key: public_key.clone(),
             owner: caller.clone(),
-            metadata: metadata_vec,
+            metadata: metadata_vec.clone(),
         };
+
+        self.sync_pricing_metadata(nonce, &metadata_vec);
 
         // Mint Soulbound NFT
         self.send().esdt_nft_create(
@@ -127,28 +137,37 @@ pub trait IdentityRegistry:
         self.agent_registered_event(&caller, nonce, AgentRegisteredEventData { name, uri });
     }
 
-    /// Update an agent's URI, public key, and optionally metadata.
-    /// Only the owner of the agent NFT can call this.
+    /// Update an agent's URI, public_key, and optionally metadata.
+    /// This follows the Transfer-Execute pattern: the owner sends the agent NFT to this endpoint.
+    /// The nonce is automatically extracted from the payment.
+    #[payable("*")]
+    #[allow_multiple_var_args]
     #[endpoint(update_agent)]
     fn update_agent(
         &self,
-        nonce: u64,
         new_uri: ManagedBuffer,
         new_public_key: ManagedBuffer,
         metadata: OptionalValue<ManagedVec<MetadataEntry<Self::Api>>>,
     ) {
         require!(!self.agent_token_id().is_empty(), "Token not issued");
 
-        let caller = self.blockchain().get_caller();
+        let payment = self.call_value().single_esdt();
         let token_id = self.agent_token_id().get_token_id();
+        require!(payment.token_identifier == token_id, "Invalid NFT sent");
+
+        let nonce = payment.token_nonce;
+        let caller = self.blockchain().get_caller();
 
         let mut details: AgentDetails<Self::Api> =
             self.blockchain().get_token_attributes(&token_id, nonce);
-        require!(caller == details.owner, "Only owner can update agent");
 
-        details.uri = new_uri.clone();
-        details.public_key = new_public_key;
-
+        // Optional updates: if not empty, update
+        if !new_uri.is_empty() {
+            details.uri = new_uri;
+        }
+        if !new_public_key.is_empty() {
+            details.public_key = new_public_key;
+        }
         if let OptionalValue::Some(m) = metadata {
             details.metadata = m;
             self.sync_pricing_metadata(nonce, &details.metadata);
@@ -157,7 +176,13 @@ pub trait IdentityRegistry:
         self.send()
             .nft_update_attributes(&token_id, nonce, &details);
 
-        self.agent_updated_event(nonce, &new_uri);
+        // Send NFT back to caller
+        self.tx()
+            .to(&caller)
+            .single_esdt(&token_id, nonce, &BigUint::from(1u64))
+            .transfer();
+
+        self.agent_updated_event(nonce, &details.uri);
     }
 
     /// Set or update specific metadata entries for an agent.
@@ -200,6 +225,9 @@ pub trait IdentityRegistry:
 
     fn sync_pricing_metadata(&self, nonce: u64, metadata: &ManagedVec<MetadataEntry<Self::Api>>) {
         let price_prefix = ManagedBuffer::from(b"price:");
+        let token_prefix = ManagedBuffer::from(b"token:");
+        let pnonce_prefix = ManagedBuffer::from(b"pnonce:");
+
         for entry in metadata.iter() {
             if entry.key.len() > price_prefix.len() {
                 let key_prefix = entry.key.copy_slice(0, price_prefix.len()).unwrap();
@@ -211,6 +239,33 @@ pub trait IdentityRegistry:
                     let price = BigUint::top_decode(entry.value.clone())
                         .unwrap_or_else(|_| BigUint::zero());
                     self.agent_service_price(nonce, &service_id).set(&price);
+                }
+            }
+
+            if entry.key.len() > token_prefix.len() {
+                let key_prefix = entry.key.copy_slice(0, token_prefix.len()).unwrap();
+                if key_prefix == token_prefix {
+                    let service_id = entry
+                        .key
+                        .copy_slice(token_prefix.len(), entry.key.len() - token_prefix.len())
+                        .unwrap();
+                    let token_id = EgldOrEsdtTokenIdentifier::top_decode(entry.value.clone())
+                        .unwrap_or_else(|_| EgldOrEsdtTokenIdentifier::egld());
+                    self.agent_service_payment_token(nonce, &service_id)
+                        .set(&token_id);
+                }
+            }
+
+            if entry.key.len() > pnonce_prefix.len() {
+                let key_prefix = entry.key.copy_slice(0, pnonce_prefix.len()).unwrap();
+                if key_prefix == pnonce_prefix {
+                    let service_id = entry
+                        .key
+                        .copy_slice(pnonce_prefix.len(), entry.key.len() - pnonce_prefix.len())
+                        .unwrap();
+                    let p_nonce = u64::top_decode(entry.value.clone()).unwrap_or(0);
+                    self.agent_service_payment_nonce(nonce, &service_id)
+                        .set(p_nonce);
                 }
             }
         }
@@ -288,4 +343,20 @@ pub trait IdentityRegistry:
         nonce: u64,
         service_id: &ManagedBuffer,
     ) -> SingleValueMapper<BigUint>;
+
+    #[view(get_agent_service_payment_token)]
+    #[storage_mapper("agentServicePaymentToken")]
+    fn agent_service_payment_token(
+        &self,
+        nonce: u64,
+        service_id: &ManagedBuffer,
+    ) -> SingleValueMapper<EgldOrEsdtTokenIdentifier>;
+
+    #[view(get_agent_service_payment_nonce)]
+    #[storage_mapper("agentServicePaymentNonce")]
+    fn agent_service_payment_nonce(
+        &self,
+        nonce: u64,
+        service_id: &ManagedBuffer,
+    ) -> SingleValueMapper<u64>;
 }

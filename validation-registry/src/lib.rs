@@ -74,20 +74,28 @@ pub trait ValidationRegistry {
             self.read_owner_from_identity(&identity_addr, agent_nonce);
         let required_price: BigUint =
             self.read_price_from_identity(&identity_addr, agent_nonce, &service_id);
+        let required_token: EgldOrEsdtTokenIdentifier =
+            self.read_token_from_identity(&identity_addr, agent_nonce, &service_id);
+        let required_pnonce: u64 =
+            self.read_pnonce_from_identity(&identity_addr, agent_nonce, &service_id);
 
         let payment = self.call_value().all();
 
         let mut total_paid = BigUint::zero();
-        for pay in payment.iter() {
-            total_paid += pay.amount.clone().into_big_uint();
+        if required_token.is_egld() {
+            total_paid = self.call_value().egld_value().clone_value();
+        } else {
+            for pay in payment.iter() {
+                let pay_token = EgldOrEsdtTokenIdentifier::esdt(pay.token_identifier.clone());
+                if pay_token == required_token && pay.token_nonce == required_pnonce {
+                    total_paid += pay.amount.clone().into_big_uint();
+                }
+            }
         }
 
         require!(total_paid >= required_price, "Insufficient payment");
 
-        // Forward payment to agent owner using Unified Transaction API
-        self.tx().to(&agent_owner).payment(payment).transfer();
-
-        // Register the job
+        // Register the job FIRST (Effect)
         job_mapper.set(JobData {
             status: JobStatus::New,
             proof: ManagedBuffer::new(),
@@ -95,6 +103,9 @@ pub trait ValidationRegistry {
             creation_timestamp: self.blockchain().get_block_timestamp_millis(),
             agent_nonce,
         });
+
+        // Forward payment to agent owner LAST (Interaction)
+        self.tx().to(&agent_owner).payment(payment).transfer();
     }
 
     fn read_owner_from_identity(&self, addr: &ManagedAddress, nonce: u64) -> ManagedAddress {
@@ -111,6 +122,32 @@ pub trait ValidationRegistry {
         service_id: &ManagedBuffer,
     ) -> BigUint {
         let mut key = ManagedBuffer::from(b"agentServicePrice");
+        let _ = nonce.dep_encode(&mut key);
+        let _ = service_id.dep_encode(&mut key);
+
+        self.storage_raw().read_from_address(addr, key)
+    }
+
+    fn read_token_from_identity(
+        &self,
+        addr: &ManagedAddress,
+        nonce: u64,
+        service_id: &ManagedBuffer,
+    ) -> EgldOrEsdtTokenIdentifier {
+        let mut key = ManagedBuffer::from(b"agentServicePaymentToken");
+        let _ = nonce.dep_encode(&mut key);
+        let _ = service_id.dep_encode(&mut key);
+
+        self.storage_raw().read_from_address(addr, key)
+    }
+
+    fn read_pnonce_from_identity(
+        &self,
+        addr: &ManagedAddress,
+        nonce: u64,
+        service_id: &ManagedBuffer,
+    ) -> u64 {
+        let mut key = ManagedBuffer::from(b"agentServicePaymentNonce");
         let _ = nonce.dep_encode(&mut key);
         let _ = service_id.dep_encode(&mut key);
 

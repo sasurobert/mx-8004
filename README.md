@@ -11,7 +11,9 @@
 
 ### Identity Registry
 - **Soulbound Identity NFTs**: Agents are issued non-transferable NFTs (`ESDTRoleNFTCreate`), ensuring identity permanence.
-- **Dynamic Attributes**: Agent metadata (Name, URI, Public Key) is stored directly in NFT attributes and can be updated by the owner.
+- **Dynamic Attributes**: Agent metadata (Name, URI, Public Key) is stored directly in NFT attributes and synchronized with contract storage.
+- **High-Performance Storage Sync**: Service prices are mirrored in contract storage for direct inter-contract reading.
+- **Transfer-Execute Metadata Updates**: Securely update agent attributes by sending the NFT to the contract; the nonce is discovered automatically from the payment.
 - **Async Issuance**: Supports asynchronous callbacks for token issuance, robust against gas failures.
 
 ### Security Enhancements

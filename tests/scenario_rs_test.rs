@@ -26,3 +26,8 @@ fn authenticity_loop_scen() {
 fn identity_full_flow_scen() {
     world().run("scenarios/identity_full_flow.scen.json");
 }
+
+#[test]
+fn failing_storage_sync_scen() {
+    world().run("scenarios/failing_storage_sync.scen.json");
+}

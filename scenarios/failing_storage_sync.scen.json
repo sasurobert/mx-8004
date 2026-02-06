@@ -1,5 +1,5 @@
 {
-    "name": "identity-full-flow",
+    "name": "failing-storage-sync",
     "steps": [
         {
             "step": "setState",
@@ -56,15 +56,16 @@
         },
         {
             "step": "scCall",
-            "txId": "register-agent-1",
+            "txId": "register-agent-with-price",
             "tx": {
                 "from": "address:agent1",
                 "to": "sc:identity",
                 "function": "register_agent",
                 "arguments": [
-                    "str:AgentOne",
-                    "str:https://uri1.com",
-                    "str:pubkey1"
+                    "str:PaidAgent",
+                    "str:https://uri.com",
+                    "str:pubkey",
+                    "u32:1|u32:12|str:price:chat|u32:1|u32:100"
                 ],
                 "gasLimit": "10,000,000",
                 "gasPrice": "0"
@@ -75,38 +76,14 @@
         },
         {
             "step": "scCall",
-            "txId": "update-agent-1",
-            "tx": {
-                "from": "address:agent1",
-                "to": "sc:identity",
-                "esdtValue": [
-                    {
-                        "tokenIdentifier": "str:AGENT-7033f1",
-                        "nonce": "1",
-                        "value": "1"
-                    }
-                ],
-                "function": "update_agent",
-                "arguments": [
-                    "str:https://uri1-updated.com",
-                    "str:pubkey1-updated"
-                ],
-                "gasLimit": "10,000,000",
-                "gasPrice": "0"
-            },
-            "expect": {
-                "status": "0"
-            }
-        },
-        {
-            "step": "scCall",
-            "txId": "final-view-agent",
+            "txId": "check-price-storage",
             "tx": {
                 "from": "address:owner",
                 "to": "sc:identity",
-                "function": "get_agent",
+                "function": "get_agent_service_price",
                 "arguments": [
-                    "u64:1"
+                    "u64:1",
+                    "str:chat"
                 ],
                 "gasLimit": "5,000,000",
                 "gasPrice": "0"
@@ -114,26 +91,8 @@
             "expect": {
                 "status": "0",
                 "out": [
-                    "u32:8|str:AgentOne|u32:24|str:https://uri1-updated.com|u32:15|str:pubkey1-updated|address:agent1|u32:1|u32:7|str:price:0|u32:0"
+                    "u64:100"
                 ]
-            }
-        },
-        {
-            "step": "checkState",
-            "accounts": {
-                "address:agent1": {
-                    "esdt": {
-                        "str:AGENT-7033f1": {
-                            "instances": [
-                                {
-                                    "nonce": "1",
-                                    "attributes": "*"
-                                }
-                            ]
-                        }
-                    }
-                },
-                "+": ""
             }
         }
     ]
