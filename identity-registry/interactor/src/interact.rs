@@ -121,7 +121,7 @@ impl ContractInteract {
             .interactor
             .tx()
             .from(&self.wallet_address)
-            .gas(30_000_000u64)
+            .gas(100_000_000u64)
             .typed(identity_registry_proxy::IdentityRegistryProxy)
             .init()
             .code(&self.contract_code)

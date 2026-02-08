@@ -5,6 +5,9 @@ authors = ["you"]
 edition = "2021"
 publish = false
 
+# Added to fix workspace error
+[workspace]
+
 [[bin]]
 name = "rust-interact"
 path = "src/interactor_main.rs"
@@ -28,4 +31,3 @@ toml = "0.9"
 
 [features]
 chain-simulator-tests = []
-
