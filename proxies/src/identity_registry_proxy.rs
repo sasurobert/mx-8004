@@ -193,15 +193,6 @@ where
             .original_result()
     }
 
-    pub fn agent_last_nonce(
-        self,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, u64> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("getLastAgentNonce")
-            .original_result()
-    }
-
     pub fn agents(
         self,
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, MultiValueEncoded<Env::Api, MultiValue2<u64, ManagedAddress<Env::Api>>>> {

@@ -6,9 +6,9 @@
 
 // Init:                                 1
 // Upgrade:                              1
-// Endpoints:                           15
+// Endpoints:                           14
 // Async Callback:                       1
-// Total number of exported functions:  18
+// Total number of exported functions:  17
 
 #![no_std]
 
@@ -26,7 +26,6 @@ multiversx_sc_wasm_adapter::endpoints! {
         setMetadata => set_metadata
         setServiceConfigs => set_service_configs_endpoint
         getAgentTokenId => agent_token_id
-        getLastAgentNonce => agent_last_nonce
         getAgentId => agents
         getAgentDetails => agent_details
         getAgentMetadata => agent_metadata

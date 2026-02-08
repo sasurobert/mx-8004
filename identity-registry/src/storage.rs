@@ -9,10 +9,6 @@ pub trait StorageModule {
     #[storage_mapper("agentTokenId")]
     fn agent_token_id(&self) -> NonFungibleTokenMapper;
 
-    #[view(getLastAgentNonce)]
-    #[storage_mapper("lastAgentNonce")]
-    fn agent_last_nonce(&self) -> SingleValueMapper<u64>;
-
     #[view(getAgentId)]
     #[storage_mapper("agents")]
     fn agents(&self) -> BiDiMapper<u64, ManagedAddress<Self::Api>>;

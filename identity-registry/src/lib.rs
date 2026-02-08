@@ -83,7 +83,6 @@ pub trait IdentityRegistry:
         // Store all data in storage mappers
         self.agents().insert(nonce, caller.clone());
         self.agent_details(nonce).set(&details);
-        self.agent_last_nonce().set(nonce);
 
         // Store metadata if provided
         self.sync_metadata(nonce, metadata);
