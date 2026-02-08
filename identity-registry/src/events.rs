@@ -17,4 +17,7 @@ pub trait EventsModule {
 
     #[event("metadataUpdated")]
     fn metadata_updated_event(&self, #[indexed] nonce: u64);
+
+    #[event("serviceConfigsUpdated")]
+    fn service_configs_updated_event(&self, #[indexed] nonce: u64);
 }
