@@ -1,9 +1,5 @@
 use identity_registry::*;
-use multiversx_sc::api::ManagedTypeApi;
-use multiversx_sc::types::{
-    BigUint, EsdtLocalRole, ManagedAddress, ManagedBuffer, ManagedVec, TokenIdentifier,
-};
-use multiversx_sc_scenario::imports::{ContractObjWrapper, OptionalValue};
+use multiversx_sc_scenario::imports::OptionalValue;
 use multiversx_sc_scenario::rust_biguint;
 use multiversx_sc_scenario::testing_framework::BlockchainStateWrapper;
 

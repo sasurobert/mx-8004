@@ -77,6 +77,7 @@ pub trait IdentityRegistry:
     /// * `uri` - URI pointing to the Agent Registration File (ARF) JSON
     /// * `public_key` - Public key for signature verification
     /// * `metadata` - Optional list of key-value metadata entries (EIP-8004 compatible)
+    #[allow_multiple_var_args]
     #[endpoint(register_agent)]
     fn register_agent(
         &self,
