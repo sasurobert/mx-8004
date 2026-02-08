@@ -1,0 +1,9 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["Antigravity"]
+edition = "2024"
+publish = false
+
+[dependencies.multiversx-sc]
+version = "0.64.1"

@@ -12,6 +12,12 @@ name = "reputation_registry"
 [dependencies.multiversx-sc]
 version = "0.64.1"
 
+[dependencies.proxies]
+path = "../proxies"
+
+[dependencies.common]
+path = "../common"
+
 [dev-dependencies.multiversx-sc-scenario]
 version = "0.64.1"
 

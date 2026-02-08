@@ -5,19 +5,26 @@
 The Identity Registry handles the lifecycle of Agent Identities via Soulbound NFTs.
 
 ### 1.1 Agent Registration
-`register_agent(name, uri, public_key, metadata)`
+`register_agent(name, uri, public_key, metadata, service_configs)`
 - Mints a unique NFT for the agent.
 - Stores `AgentDetails` in NFT attributes.
-- **NEW**: Synchronizes metadata prices (keys starting with `price:`), tokens (`token:`), and nonces (`pnonce:`) into contract storage for high-performance direct reading.
-- Defaults service costs to 0 and payment token to EGLD if not explicitly set.
+- `metadata` — generic key-value pairs stored in NFT attributes for extensibility.
+- `service_configs` — typed `ServiceConfigInput` structs written directly to storage mappers:
+  - `ServiceConfigInput { service_id, price, token, pnonce }`
+- If `service_configs` is empty, defaults to service `"0"` with price 0, EGLD, pnonce 0.
 
-### 1.2 Metadata Updates
-`update_agent(new_uri, new_public_key, metadata)`
-- **Transfer-Execute Pattern**: The agent owner (or bot) sends its Soulbound NFT to this endpoint.
+### 1.2 Agent Updates
+`update_agent(new_uri, new_public_key, metadata, service_configs)`
+- **Transfer-Execute Pattern**: The agent owner sends its Soulbound NFT to this endpoint.
 - **Nonce Discovery**: The contract automatically extracts the `nonce` from the NFT payment.
 - **Validation**: Ensures the sent token matches the `agent_token_id`.
-- **Atomic Update**: Contract updates attributes, synchronizes pricing storage, and returns the NFT to the sender in the same transaction.
-- Facilitates secure, bot-driven metadata management.
+- **Atomic Update**: Contract updates attributes, writes service configs to storage, and returns the NFT to the sender in the same transaction.
+
+### 1.3 Metadata Management
+`set_metadata(nonce, entries)` — upserts generic key-value metadata in NFT attributes. Does **not** affect pricing storage.
+
+### 1.4 Service Config Management
+`set_service_configs(nonce, configs)` — writes `ServiceConfigInput` entries directly to storage mappers. Requires caller to be the agent owner.
 
 ## 2. Validation Registry
 
@@ -37,6 +44,16 @@ Handles job initialization and proof verification.
 - `agentServicePrice(nonce, service_id)`: SingleValueMapper<BigUint>
 - `agentServicePaymentToken(nonce, service_id)`: SingleValueMapper<EgldOrEsdtTokenIdentifier>
 - `agentServicePaymentNonce(nonce, service_id)`: SingleValueMapper<u64>
+
+### Types
+```rust
+struct ServiceConfigInput {
+    service_id: ManagedBuffer,
+    price: BigUint,
+    token: EgldOrEsdtTokenIdentifier,
+    pnonce: u64,
+}
+```
 
 ---
 

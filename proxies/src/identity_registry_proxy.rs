@@ -90,67 +90,70 @@ where
         token_ticker: Arg1,
     ) -> TxTypedCall<Env, From, To, (), Gas, ()> {
         self.wrapped_tx
-            .raw_call("issue_token")
+            .raw_call("issueToken")
             .argument(&token_display_name)
             .argument(&token_ticker)
             .original_result()
     }
 
-    /// Register a new agent with name, URI, public key, and optional metadata entries. 
-    ///  
-    /// # Arguments 
-    /// * `name` - Display name of the agent 
-    /// * `uri` - URI pointing to the Agent Registration File (ARF) JSON 
-    /// * `public_key` - Public key for signature verification 
-    /// * `metadata` - Optional list of key-value metadata entries (EIP-8004 compatible) 
+    /// Register a new agent with name, URI, public key, optional metadata, and optional service configs. 
     pub fn register_agent<
         Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg2: ProxyArg<ManagedBuffer<Env::Api>>,
-        Arg3: ProxyArg<OptionalValue<ManagedVec<Env::Api, MetadataEntry<Env::Api>>>>,
+        Arg3: ProxyArg<MultiValueEncoded<Env::Api, common::structs::MetadataEntry<Env::Api>>>,
+        Arg4: ProxyArg<MultiValueEncoded<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>,
     >(
         self,
         name: Arg0,
         uri: Arg1,
         public_key: Arg2,
         metadata: Arg3,
+        services: Arg4,
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("register_agent")
+            .raw_call("registerAgent")
             .argument(&name)
             .argument(&uri)
             .argument(&public_key)
             .argument(&metadata)
+            .argument(&services)
             .original_result()
     }
 
-    /// Update an agent's URI, public_key, and optionally metadata. 
-    /// This follows the Transfer-Execute pattern: the owner sends the agent NFT to this endpoint. 
-    /// The nonce is automatically extracted from the payment. 
+    /// Update an agent's URI and/or public_key. Requires sending the agent NFT. 
     pub fn update_agent<
         Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
-        Arg2: ProxyArg<OptionalValue<ManagedVec<Env::Api, MetadataEntry<Env::Api>>>>,
+        Arg2: ProxyArg<ManagedBuffer<Env::Api>>,
+        Arg3: ProxyArg<ManagedBuffer<Env::Api>>,
+        Arg4: ProxyArg<OptionalValue<MultiValueEncoded<Env::Api, common::structs::MetadataEntry<Env::Api>>>>,
+        Arg5: ProxyArg<OptionalValue<MultiValueEncoded<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>>,
     >(
         self,
-        new_uri: Arg0,
-        new_public_key: Arg1,
-        metadata: Arg2,
+        new_name: Arg0,
+        new_uri: Arg1,
+        new_public_key: Arg2,
+        signature: Arg3,
+        metadata: Arg4,
+        services: Arg5,
     ) -> TxTypedCall<Env, From, To, (), Gas, ()> {
         self.wrapped_tx
-            .raw_call("update_agent")
+            .raw_call("updateAgent")
+            .argument(&new_name)
             .argument(&new_uri)
             .argument(&new_public_key)
+            .argument(&signature)
             .argument(&metadata)
+            .argument(&services)
             .original_result()
     }
 
-    /// Set or update specific metadata entries for an agent. 
-    /// This merges with existing metadata (upsert behavior). 
+    /// Set or update metadata entries for an agent. O(1) per entry via MapMapper. 
     pub fn set_metadata<
         Arg0: ProxyArg<u64>,
-        Arg1: ProxyArg<ManagedVec<Env::Api, MetadataEntry<Env::Api>>>,
+        Arg1: ProxyArg<MultiValueEncoded<Env::Api, common::structs::MetadataEntry<Env::Api>>>,
     >(
         self,
         nonce: Arg0,
@@ -158,13 +161,121 @@ where
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("set_metadata")
+            .raw_call("setMetadata")
             .argument(&nonce)
             .argument(&entries)
             .original_result()
     }
 
-    /// Get a specific metadata value by key for an agent. 
+    /// Set or update service configurations for an agent. 
+    pub fn set_service_configs_endpoint<
+        Arg0: ProxyArg<u64>,
+        Arg1: ProxyArg<MultiValueEncoded<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>,
+    >(
+        self,
+        nonce: Arg0,
+        configs: Arg1,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("setServiceConfigs")
+            .argument(&nonce)
+            .argument(&configs)
+            .original_result()
+    }
+
+    pub fn agent_token_id(
+        self,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, EsdtTokenIdentifier<Env::Api>> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getAgentTokenId")
+            .original_result()
+    }
+
+    pub fn agent_last_nonce(
+        self,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, u64> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getLastAgentNonce")
+            .original_result()
+    }
+
+    pub fn agents(
+        self,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, MultiValueEncoded<Env::Api, MultiValue2<u64, ManagedAddress<Env::Api>>>> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getAgentId")
+            .original_result()
+    }
+
+    pub fn agent_details<
+        Arg0: ProxyArg<u64>,
+    >(
+        self,
+        nonce: Arg0,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, common::structs::AgentDetails<Env::Api>> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getAgentDetails")
+            .argument(&nonce)
+            .original_result()
+    }
+
+    pub fn agent_metadata<
+        Arg0: ProxyArg<u64>,
+    >(
+        self,
+        nonce: Arg0,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, MultiValueEncoded<Env::Api, MultiValue2<ManagedBuffer<Env::Api>, ManagedBuffer<Env::Api>>>> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getAgentMetadata")
+            .argument(&nonce)
+            .original_result()
+    }
+
+    pub fn agent_service_config<
+        Arg0: ProxyArg<u64>,
+    >(
+        self,
+        nonce: Arg0,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, MultiValueEncoded<Env::Api, MultiValue2<u32, Payment<Env::Api>>>> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getAgentService")
+            .argument(&nonce)
+            .original_result()
+    }
+
+    pub fn get_agent<
+        Arg0: ProxyArg<u64>,
+    >(
+        self,
+        nonce: Arg0,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, common::structs::AgentDetails<Env::Api>> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getAgent")
+            .argument(&nonce)
+            .original_result()
+    }
+
+    pub fn get_agent_owner<
+        Arg0: ProxyArg<u64>,
+    >(
+        self,
+        nonce: Arg0,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ManagedAddress<Env::Api>> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("getAgentOwner")
+            .argument(&nonce)
+            .original_result()
+    }
+
     pub fn get_metadata<
         Arg0: ProxyArg<u64>,
         Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
@@ -175,175 +286,25 @@ where
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, OptionalValue<ManagedBuffer<Env::Api>>> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("get_metadata")
+            .raw_call("getMetadata")
             .argument(&nonce)
             .argument(&key)
             .original_result()
     }
 
-    /// Get the complete payment configuration for a specific agent service in one call. 
     pub fn get_agent_service_config<
         Arg0: ProxyArg<u64>,
-        Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
+        Arg1: ProxyArg<u32>,
     >(
         self,
         nonce: Arg0,
         service_id: Arg1,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, AgentServiceConfig<Env::Api>> {
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, OptionalValue<EgldOrEsdtTokenPayment<Env::Api>>> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("get_agent_service_config")
+            .raw_call("getAgentServiceConfig")
             .argument(&nonce)
             .argument(&service_id)
             .original_result()
     }
-
-    pub fn get_agent<
-        Arg0: ProxyArg<u64>,
-    >(
-        self,
-        nonce: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, AgentDetails<Env::Api>> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("get_agent")
-            .argument(&nonce)
-            .original_result()
-    }
-
-    pub fn get_agent_id<
-        Arg0: ProxyArg<ManagedAddress<Env::Api>>,
-    >(
-        self,
-        address: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, u64> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("get_agent_id")
-            .argument(&address)
-            .original_result()
-    }
-
-    pub fn agent_token_id(
-        self,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, EsdtTokenIdentifier<Env::Api>> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("get_agent_token_id")
-            .original_result()
-    }
-
-    pub fn agent_token_nonce(
-        self,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, u64> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("agent_token_nonce")
-            .original_result()
-    }
-
-    pub fn agent_owner<
-        Arg0: ProxyArg<u64>,
-    >(
-        self,
-        nonce: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ManagedAddress<Env::Api>> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("get_agent_owner")
-            .argument(&nonce)
-            .original_result()
-    }
-
-    pub fn agent_service_price<
-        Arg0: ProxyArg<u64>,
-        Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
-    >(
-        self,
-        nonce: Arg0,
-        service_id: Arg1,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, BigUint<Env::Api>> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("get_agent_service_price")
-            .argument(&nonce)
-            .argument(&service_id)
-            .original_result()
-    }
-
-    pub fn agent_service_payment_token<
-        Arg0: ProxyArg<u64>,
-        Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
-    >(
-        self,
-        nonce: Arg0,
-        service_id: Arg1,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, EgldOrEsdtTokenIdentifier<Env::Api>> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("get_agent_service_payment_token")
-            .argument(&nonce)
-            .argument(&service_id)
-            .original_result()
-    }
-
-    pub fn agent_service_payment_nonce<
-        Arg0: ProxyArg<u64>,
-        Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
-    >(
-        self,
-        nonce: Arg0,
-        service_id: Arg1,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, u64> {
-        self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("get_agent_service_payment_nonce")
-            .argument(&nonce)
-            .argument(&service_id)
-            .original_result()
-    }
-}
-
-#[type_abi]
-#[derive(TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, Clone, PartialEq, Debug)]
-pub struct MetadataEntry<Api>
-where
-    Api: ManagedTypeApi,
-{
-    pub key: ManagedBuffer<Api>,
-    pub value: ManagedBuffer<Api>,
-}
-
-#[type_abi]
-#[derive(TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, Clone, PartialEq, Debug)]
-pub struct AgentServiceConfig<Api>
-where
-    Api: ManagedTypeApi,
-{
-    pub token: EgldOrEsdtTokenIdentifier<Api>,
-    pub pnonce: u64,
-    pub price: BigUint<Api>,
-}
-
-#[type_abi]
-#[derive(TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, Clone, PartialEq, Debug)]
-pub struct AgentDetails<Api>
-where
-    Api: ManagedTypeApi,
-{
-    pub name: ManagedBuffer<Api>,
-    pub uri: ManagedBuffer<Api>,
-    pub public_key: ManagedBuffer<Api>,
-    pub owner: ManagedAddress<Api>,
-    pub metadata: ManagedVec<Api, MetadataEntry<Api>>,
-}
-
-#[type_abi]
-#[derive(TopEncode, TopDecode, ManagedVecItem, NestedEncode, NestedDecode, Clone, PartialEq, Debug)]
-pub struct AgentRegisteredEventData<Api>
-where
-    Api: ManagedTypeApi,
-{
-    pub name: ManagedBuffer<Api>,
-    pub uri: ManagedBuffer<Api>,
 }

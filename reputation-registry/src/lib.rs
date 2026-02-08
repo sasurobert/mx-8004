@@ -3,79 +3,66 @@
 multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
 
-mod identity_registry_proxy;
-mod validation_registry_proxy;
+pub mod config;
+mod errors;
+mod events;
+pub mod storage;
+mod utils;
+
+use errors::*;
+use storage::JobStatus;
 
 #[multiversx_sc::contract]
-pub trait ReputationRegistry {
+pub trait ReputationRegistry:
+    common::cross_contract::CrossContractModule
+    + storage::StorageModule
+    + events::EventsModule
+    + config::ConfigModule
+    + utils::UtilsModule
+{
     #[init]
-    fn init(&self) {}
+    fn init(
+        &self,
+        validation_contract_address: ManagedAddress,
+        identity_contract_address: ManagedAddress,
+    ) {
+        self.validation_contract_address()
+            .set(&validation_contract_address);
+        self.identity_contract_address()
+            .set(&identity_contract_address);
+    }
 
     #[upgrade]
     fn upgrade(&self) {}
 
-    #[only_owner]
-    #[endpoint(set_identity_contract_address)]
-    fn set_identity_contract_address(&self, address: ManagedAddress) {
-        self.identity_contract_address().set(&address);
-    }
-
-    #[only_owner]
-    #[endpoint(set_validation_contract_address)]
-    fn set_validation_contract_address(&self, address: ManagedAddress) {
-        self.validation_contract_address().set(&address);
-    }
-
-    #[endpoint(submit_feedback)]
+    #[endpoint(submitFeedback)]
     fn submit_feedback(&self, job_id: ManagedBuffer, agent_nonce: u64, rating: BigUint) {
         let caller = self.blockchain().get_caller();
         let validation_addr = self.validation_contract_address().get();
 
-        // 1. Authenticity: Verify job is complete
-        let job_data = self
-            .tx()
-            .to(&validation_addr)
-            .typed(validation_registry_proxy::ValidationRegistryProxy)
-            .get_job_data(&job_id)
-            .returns(ReturnsResult)
-            .sync_call()
-            .into_option()
-            .unwrap_or_else(|| sc_panic!("Job not found or not initialized"));
+        // 1. Authenticity: Read job data directly from validation-registry storage
+        let job_mapper = self.external_job_data(validation_addr, &job_id);
+        require!(!job_mapper.is_empty(), ERR_JOB_NOT_FOUND);
+        let job_data = job_mapper.get();
 
-        require!(
-            job_data.status == validation_registry_proxy::JobStatus::Verified,
-            "Job not verified"
-        );
+        require!(job_data.status == JobStatus::Verified, ERR_JOB_NOT_VERIFIED);
 
         // 2. Frontrunning Protection: Verify caller is the employer
-        require!(
-            caller == job_data.employer,
-            "Only the employer can provide feedback"
-        );
+        require!(caller == job_data.employer, ERR_NOT_EMPLOYER);
 
         // 3. Authorization Gate: Verify agent authorized this specific feedback
         require!(
             self.is_feedback_authorized(job_id.clone(), caller).get(),
-            "Feedback not authorized by agent"
+            ERR_FEEDBACK_NOT_AUTHORIZED
         );
 
         // 4. Duplicate Prevention
         require!(
             !self.has_given_feedback(job_id.clone()).get(),
-            "Feedback already provided for this job"
+            ERR_FEEDBACK_ALREADY_PROVIDED
         );
 
-        let total_jobs = self.total_jobs(agent_nonce).update(|n| {
-            *n += 1;
-            *n
-        });
-
-        let current_score = self.reputation_score(agent_nonce).get();
-        // Calculate new score: ((current * (total - 1)) + rating) / total
-        let total_big = BigUint::from(total_jobs);
-        let prev_total = &total_big - 1u32;
-        let weighted_score = current_score * prev_total;
-        let new_score = (weighted_score + rating) / total_big;
+        let new_score = self.calculate_new_score(agent_nonce, rating);
 
         self.reputation_score(agent_nonce).set(&new_score);
         self.has_given_feedback(job_id).set(true);
@@ -83,106 +70,31 @@ pub trait ReputationRegistry {
         self.reputation_updated_event(agent_nonce, new_score);
     }
 
-    #[endpoint(authorize_feedback)]
+    #[endpoint(authorizeFeedback)]
     fn authorize_feedback(&self, job_id: ManagedBuffer, client: ManagedAddress) {
-        // 1. Get Agent Nonce from Validation Registry
         let validation_addr = self.validation_contract_address().get();
-        let job_data = self
-            .tx()
-            .to(&validation_addr)
-            .typed(validation_registry_proxy::ValidationRegistryProxy)
-            .get_job_data(&job_id)
-            .returns(ReturnsResult)
-            .sync_call()
-            .into_option()
-            .unwrap_or_else(|| sc_panic!("Job not found or not initialized"));
+        let job_mapper = self.external_job_data(validation_addr, &job_id);
+        require!(!job_mapper.is_empty(), ERR_JOB_NOT_FOUND);
+        let job_data = job_mapper.get();
 
-        // 2. Get Agent Owner from Identity Registry
-        let identity_addr = self.identity_contract_address().get();
-        let agent_details = self
-            .tx()
-            .to(&identity_addr)
-            .typed(identity_registry_proxy::IdentityRegistryProxy)
-            .get_agent(job_data.agent_nonce)
-            .returns(ReturnsResult)
-            .sync_call();
-
-        // 3. Verify Caller is the Agent Owner
         let caller = self.blockchain().get_caller();
-        require!(
-            caller == agent_details.owner,
-            "Only the agent owner can authorize feedback"
-        );
+        let agent_owner = self.require_agent_owner(job_data.agent_nonce);
+        require!(caller == agent_owner, ERR_NOT_AGENT_OWNER);
 
         self.is_feedback_authorized(job_id, client).set(true);
     }
 
-    #[endpoint(append_response)]
+    #[endpoint(appendResponse)]
     fn append_response(&self, job_id: ManagedBuffer, response_uri: ManagedBuffer) {
-        // 1. Get Agent Nonce from Validation Registry
         let validation_addr = self.validation_contract_address().get();
-        let job_data = self
-            .tx()
-            .to(&validation_addr)
-            .typed(validation_registry_proxy::ValidationRegistryProxy)
-            .get_job_data(&job_id)
-            .returns(ReturnsResult)
-            .sync_call()
-            .into_option()
-            .unwrap_or_else(|| sc_panic!("Job not found or not initialized"));
+        let job_mapper = self.external_job_data(validation_addr, &job_id);
+        require!(!job_mapper.is_empty(), ERR_JOB_NOT_FOUND);
+        let job_data = job_mapper.get();
 
-        // 2. Get Agent Owner from Identity Registry
-        let identity_addr = self.identity_contract_address().get();
-        let agent_details = self
-            .tx()
-            .to(&identity_addr)
-            .typed(identity_registry_proxy::IdentityRegistryProxy)
-            .get_agent(job_data.agent_nonce)
-            .returns(ReturnsResult)
-            .sync_call();
-
-        // 3. Verify Caller
         let caller = self.blockchain().get_caller();
-        require!(
-            caller == agent_details.owner,
-            "Only the agent owner can respond"
-        );
+        let agent_owner = self.require_agent_owner(job_data.agent_nonce);
+        require!(caller == agent_owner, ERR_NOT_AGENT_OWNER);
 
         self.agent_response(job_id).set(response_uri);
     }
-
-    #[event("reputationUpdated")]
-    fn reputation_updated_event(&self, #[indexed] agent_nonce: u64, new_score: BigUint);
-
-    #[view]
-    #[storage_mapper("reputationScore")]
-    fn reputation_score(&self, agent_nonce: u64) -> SingleValueMapper<BigUint>;
-
-    #[view]
-    #[storage_mapper("totalJobs")]
-    fn total_jobs(&self, agent_nonce: u64) -> SingleValueMapper<u64>;
-
-    #[view]
-    #[storage_mapper("validationContractAddress")]
-    fn validation_contract_address(&self) -> SingleValueMapper<ManagedAddress>;
-
-    #[view]
-    #[storage_mapper("identityContractAddress")]
-    fn identity_contract_address(&self) -> SingleValueMapper<ManagedAddress>;
-
-    #[view]
-    #[storage_mapper("hasGivenFeedback")]
-    fn has_given_feedback(&self, job_id: ManagedBuffer) -> SingleValueMapper<bool>;
-
-    #[view]
-    #[storage_mapper("isFeedbackAuthorized")]
-    fn is_feedback_authorized(
-        &self,
-        job_id: ManagedBuffer,
-        client: ManagedAddress,
-    ) -> SingleValueMapper<bool>;
-
-    #[view]
-    #[storage_mapper("agentResponse")]
-    fn agent_response(&self, job_id: ManagedBuffer) -> SingleValueMapper<ManagedBuffer>;
 }

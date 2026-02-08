@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "common",
+    "proxies",
     "identity-registry",
     "identity-registry/meta",
     "validation-registry",

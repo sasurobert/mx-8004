@@ -6,9 +6,9 @@
 
 // Init:                                 1
 // Upgrade:                              1
-// Endpoints:                           14
+// Endpoints:                           15
 // Async Callback:                       1
-// Total number of exported functions:  17
+// Total number of exported functions:  18
 
 #![no_std]
 
@@ -20,20 +20,21 @@ multiversx_sc_wasm_adapter::endpoints! {
     (
         init => init
         upgrade => upgrade
-        issue_token => issue_token
-        register_agent => register_agent
-        update_agent => update_agent
-        set_metadata => set_metadata
-        get_metadata => get_metadata
-        get_agent_service_config => get_agent_service_config
-        get_agent => get_agent
-        get_agent_id => get_agent_id
-        get_agent_token_id => agent_token_id
-        agent_token_nonce => agent_token_nonce
-        get_agent_owner => agent_owner
-        get_agent_service_price => agent_service_price
-        get_agent_service_payment_token => agent_service_payment_token
-        get_agent_service_payment_nonce => agent_service_payment_nonce
+        issueToken => issue_token
+        registerAgent => register_agent
+        updateAgent => update_agent
+        setMetadata => set_metadata
+        setServiceConfigs => set_service_configs_endpoint
+        getAgentTokenId => agent_token_id
+        getLastAgentNonce => agent_last_nonce
+        getAgentId => agents
+        getAgentDetails => agent_details
+        getAgentMetadata => agent_metadata
+        getAgentService => agent_service_config
+        getAgent => get_agent
+        getAgentOwner => get_agent_owner
+        getMetadata => get_metadata
+        getAgentServiceConfig => get_agent_service_config
     )
 }
 

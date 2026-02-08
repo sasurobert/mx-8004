@@ -43,12 +43,35 @@ where
     From: TxFrom<Env>,
     Gas: TxGas<Env>,
 {
-    pub fn init(
+    pub fn init<
+        Arg0: ProxyArg<ManagedAddress<Env::Api>>,
+    >(
         self,
+        identity_registry_address: Arg0,
     ) -> TxTypedDeploy<Env, From, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
             .raw_deploy()
+            .argument(&identity_registry_address)
+            .original_result()
+    }
+}
+
+#[rustfmt::skip]
+impl<Env, From, To, Gas> ValidationRegistryProxyMethods<Env, From, To, Gas>
+where
+    Env: TxEnv,
+    Env::Api: VMApi,
+    From: TxFrom<Env>,
+    To: TxTo<Env>,
+    Gas: TxGas<Env>,
+{
+    pub fn upgrade(
+        self,
+    ) -> TxTypedUpgrade<Env, From, To, NotPayable, Gas, ()> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_upgrade()
             .original_result()
     }
 }
@@ -65,16 +88,18 @@ where
     pub fn init_job<
         Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg1: ProxyArg<u64>,
+        Arg2: ProxyArg<OptionalValue<u32>>,
     >(
         self,
         job_id: Arg0,
         agent_nonce: Arg1,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
+        service_id: Arg2,
+    ) -> TxTypedCall<Env, From, To, (), Gas, ()> {
         self.wrapped_tx
-            .payment(NotPayable)
-            .raw_call("init_job")
+            .raw_call("initJob")
             .argument(&job_id)
             .argument(&agent_nonce)
+            .argument(&service_id)
             .original_result()
     }
 
@@ -88,7 +113,7 @@ where
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("submit_proof")
+            .raw_call("submitProof")
             .argument(&job_id)
             .argument(&proof)
             .original_result()
@@ -102,7 +127,7 @@ where
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("verify_job")
+            .raw_call("verifyJob")
             .argument(&job_id)
             .original_result()
     }
@@ -115,7 +140,7 @@ where
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("clean_old_jobs")
+            .raw_call("cleanOldJobs")
             .argument(&job_ids)
             .original_result()
     }
@@ -128,7 +153,7 @@ where
     ) -> TxTypedCall<Env, From, To, NotPayable, Gas, bool> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("is_job_verified")
+            .raw_call("isJobVerified")
             .argument(&job_id)
             .original_result()
     }
@@ -138,32 +163,24 @@ where
     >(
         self,
         job_id: Arg0,
-    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, OptionalValue<JobData<Env::Api>>> {
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, OptionalValue<common::structs::JobData<Env::Api>>> {
         self.wrapped_tx
             .payment(NotPayable)
-            .raw_call("get_job_data")
+            .raw_call("getJobData")
             .argument(&job_id)
             .original_result()
     }
-}
 
-#[type_abi]
-#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Debug)]
-pub struct JobData<Api>
-where
-    Api: ManagedTypeApi,
-{
-    pub status: JobStatus,
-    pub proof: ManagedBuffer<Api>,
-    pub employer: ManagedAddress<Api>,
-    pub creation_timestamp: TimestampMillis,
-    pub agent_nonce: u64,
-}
-
-#[type_abi]
-#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Debug)]
-pub enum JobStatus {
-    New,
-    Pending,
-    Verified,
+    pub fn set_identity_registry_address<
+        Arg0: ProxyArg<ManagedAddress<Env::Api>>,
+    >(
+        self,
+        address: Arg0,
+    ) -> TxTypedCall<Env, From, To, NotPayable, Gas, ()> {
+        self.wrapped_tx
+            .payment(NotPayable)
+            .raw_call("setIdentityRegistryAddress")
+            .argument(&address)
+            .original_result()
+    }
 }

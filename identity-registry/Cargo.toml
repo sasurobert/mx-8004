@@ -10,9 +10,12 @@ version = "0.64.1"
 
 [dependencies.multiversx-sc-modules]
 version = "0.64.1"
+
+[dependencies.common]
+path = "../common"
+
 [dev-dependencies.multiversx-sc-scenario]
 version = "0.64.1"
-features = ["wasmer-experimental"]
 
 [lib]
 path = "src/lib.rs"

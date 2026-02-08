@@ -1,7 +1,2 @@
 [[proxy]]
-path = "../reputation-registry/src/identity_registry_proxy.rs"
-
-[[proxy]]
-path = "interactor/src/identity_registry_proxy.rs"
-
-
+path = "../proxies/src/identity_registry_proxy.rs"

@@ -1,2 +1,2 @@
 [[proxy]]
-path = "../reputation-registry/src/validation_registry_proxy.rs"
+path = "../proxies/src/validation_registry_proxy.rs"
