@@ -1,3 +1,7 @@
-{
-    "language": "rust"
-}
+    "language": "rust",
+    "contracts": {
+        "identity-registry": {
+            "name": "identity-registry",
+            "allocator": "leaking"
+        }
+    }

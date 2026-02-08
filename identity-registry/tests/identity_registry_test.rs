@@ -1,5 +1,6 @@
 use identity_registry::*;
 use multiversx_sc_scenario::imports::OptionalValue;
+use multiversx_sc_scenario::imports::*;
 use multiversx_sc_scenario::rust_biguint;
 use multiversx_sc_scenario::testing_framework::BlockchainStateWrapper;
 
@@ -296,8 +297,6 @@ fn test_get_agent_service_config() {
         assert_eq!(config.pnonce, 10u64);
     });
 }
-
-use multiversx_sc_scenario::*;
 
 fn world() -> ScenarioWorld {
     let mut blockchain = ScenarioWorld::new();

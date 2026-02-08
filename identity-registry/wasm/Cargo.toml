@@ -32,7 +32,3 @@ version = "0.64.1"
 
 [workspace]
 members = ["."]
-
-[features]
-default = ["wee_alloc"]
-wee_alloc = ["multiversx-sc-wasm-adapter/wee_alloc"]
