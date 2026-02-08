@@ -3,6 +3,8 @@
 multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
 
+mod storage;
+
 const THREE_DAYS: DurationMillis = DurationMillis::new(3 * 24 * 60 * 60 * 1000);
 
 #[type_abi]
@@ -24,7 +26,7 @@ pub struct JobData<M: ManagedTypeApi> {
 }
 
 #[multiversx_sc::contract]
-pub trait ValidationRegistry {
+pub trait ValidationRegistry: storage::ExternalStorageModule {
     #[init]
     fn init(&self, identity_registry_address: ManagedAddress) {
         self.identity_registry_address()
@@ -54,8 +56,7 @@ pub trait ValidationRegistry {
         });
     }
 
-    /// Optimized job initialization with payment.
-    /// Uses direct storage reads from IdentityRegistry for maximum performance.
+    /// Job initialization with payment via cross-contract storage mappers.
     #[payable("*")]
     #[endpoint(init_job_with_payment)]
     fn init_job_with_payment(
@@ -69,15 +70,11 @@ pub trait ValidationRegistry {
 
         let identity_addr = self.identity_registry_address().get();
 
-        // Resolve agent owner and price via direct storage access
-        let agent_owner: ManagedAddress =
-            self.read_owner_from_identity(&identity_addr, agent_nonce);
-        let required_price: BigUint =
-            self.read_price_from_identity(&identity_addr, agent_nonce, &service_id);
-        let required_token: EgldOrEsdtTokenIdentifier =
-            self.read_token_from_identity(&identity_addr, agent_nonce, &service_id);
-        let required_pnonce: u64 =
-            self.read_pnonce_from_identity(&identity_addr, agent_nonce, &service_id);
+        // Resolve agent owner and price via cross-contract storage mappers
+        let agent_owner = self.identity_agent_owner(identity_addr.clone(), agent_nonce).get();
+        let required_price = self.identity_agent_service_price(identity_addr.clone(), agent_nonce, &service_id).get();
+        let required_token = self.identity_agent_service_payment_token(identity_addr.clone(), agent_nonce, &service_id).get();
+        let required_pnonce = self.identity_agent_service_payment_nonce(identity_addr, agent_nonce, &service_id).get();
 
         let payment = self.call_value().all();
 
@@ -106,52 +103,6 @@ pub trait ValidationRegistry {
 
         // Forward payment to agent owner LAST (Interaction)
         self.tx().to(&agent_owner).payment(payment).transfer();
-    }
-
-    fn read_owner_from_identity(&self, addr: &ManagedAddress, nonce: u64) -> ManagedAddress {
-        let mut key = ManagedBuffer::from(b"agentOwner");
-        let _ = nonce.dep_encode(&mut key);
-
-        self.storage_raw().read_from_address(addr, key)
-    }
-
-    fn read_price_from_identity(
-        &self,
-        addr: &ManagedAddress,
-        nonce: u64,
-        service_id: &ManagedBuffer,
-    ) -> BigUint {
-        let mut key = ManagedBuffer::from(b"agentServicePrice");
-        let _ = nonce.dep_encode(&mut key);
-        let _ = service_id.dep_encode(&mut key);
-
-        self.storage_raw().read_from_address(addr, key)
-    }
-
-    fn read_token_from_identity(
-        &self,
-        addr: &ManagedAddress,
-        nonce: u64,
-        service_id: &ManagedBuffer,
-    ) -> EgldOrEsdtTokenIdentifier {
-        let mut key = ManagedBuffer::from(b"agentServicePaymentToken");
-        let _ = nonce.dep_encode(&mut key);
-        let _ = service_id.dep_encode(&mut key);
-
-        self.storage_raw().read_from_address(addr, key)
-    }
-
-    fn read_pnonce_from_identity(
-        &self,
-        addr: &ManagedAddress,
-        nonce: u64,
-        service_id: &ManagedBuffer,
-    ) -> u64 {
-        let mut key = ManagedBuffer::from(b"agentServicePaymentNonce");
-        let _ = nonce.dep_encode(&mut key);
-        let _ = service_id.dep_encode(&mut key);
-
-        self.storage_raw().read_from_address(addr, key)
     }
 
     #[endpoint(submit_proof)]
