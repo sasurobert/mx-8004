@@ -6,9 +6,9 @@
 
 // Init:                                 1
 // Upgrade:                              1
-// Endpoints:                           10
+// Endpoints:                           12
 // Async Callback (empty):               1
-// Total number of exported functions:  13
+// Total number of exported functions:  15
 
 #![no_std]
 
@@ -20,6 +20,8 @@ multiversx_sc_wasm_adapter::endpoints! {
     (
         init => init
         upgrade => upgrade
+        set_identity_contract_address => set_identity_contract_address
+        set_validation_contract_address => set_validation_contract_address
         submit_feedback => submit_feedback
         authorize_feedback => authorize_feedback
         append_response => append_response

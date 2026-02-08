@@ -7,7 +7,7 @@
 [package]
 name = "validation-registry-wasm"
 version = "0.0.0"
-edition = "2024"
+edition = "2021"
 publish = false
 
 [lib]
