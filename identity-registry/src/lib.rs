@@ -186,5 +186,38 @@ pub trait IdentityRegistry:
         require!(!self.agent_token_id().is_empty(), ERR_TOKEN_NOT_ISSUED);
         self.require_agent_owner(nonce);
         self.sync_service_configs(nonce, configs);
+        self.service_configs_updated_event(nonce);
+    }
+
+    /// Remove metadata entries by key.
+    #[endpoint(removeMetadata)]
+    fn remove_metadata(
+        &self,
+        nonce: u64,
+        keys: MultiValueEncoded<ManagedBuffer>,
+    ) {
+        require!(!self.agent_token_id().is_empty(), ERR_TOKEN_NOT_ISSUED);
+        self.require_agent_owner(nonce);
+        let mut mapper = self.agent_metadata(nonce);
+        for key in keys {
+            mapper.remove(&key);
+        }
+        self.metadata_updated_event(nonce);
+    }
+
+    /// Remove service configurations by service ID.
+    #[endpoint(removeServiceConfigs)]
+    fn remove_service_configs(
+        &self,
+        nonce: u64,
+        service_ids: MultiValueEncoded<u32>,
+    ) {
+        require!(!self.agent_token_id().is_empty(), ERR_TOKEN_NOT_ISSUED);
+        self.require_agent_owner(nonce);
+        let mut mapper = self.agent_service_config(nonce);
+        for sid in service_ids {
+            mapper.remove(&sid);
+        }
+        self.service_configs_updated_event(nonce);
     }
 }
