@@ -1,5 +1,5 @@
 [package]
-name = "rust-interact"
+name = "validation-registry-interactor"
 version = "0.0.0"
 authors = ["you"]
 edition = "2024"

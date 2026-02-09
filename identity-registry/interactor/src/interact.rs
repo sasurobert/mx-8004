@@ -1,8 +1,9 @@
 #![allow(non_snake_case)]
 
 pub mod config;
-mod identity_registry_proxy;
+pub mod identity_registry_proxy;
 
+use common::{MetadataEntry, ServiceConfigInput};
 use config::Config;
 use multiversx_sc_snippets::imports::*;
 use serde::{Deserialize, Serialize};
@@ -105,7 +106,7 @@ impl ContractInteract {
         interactor.generate_blocks_until_all_activations().await;
 
         let contract_code = BytesValue::interpret_from(
-            "mxsc:../output/identity-registry.mxsc.json",
+            "mxsc:output/identity-registry.mxsc.json",
             &InterpreterContext::default(),
         );
 
@@ -178,8 +179,8 @@ impl ContractInteract {
         let name = ManagedBuffer::new_from_bytes(&b""[..]);
         let uri = ManagedBuffer::new_from_bytes(&b""[..]);
         let public_key = ManagedBuffer::new_from_bytes(&b""[..]);
-        let metadata = MetadataEntry::<StaticApi>::default();
-        let services = ServiceConfigInput::<StaticApi>::default();
+        let metadata = MultiValueEncodedCounted::<StaticApi, MetadataEntry<StaticApi>>::new();
+        let services = MultiValueEncodedCounted::<StaticApi, ServiceConfigInput<StaticApi>>::new();
 
         let response = self
             .interactor
@@ -204,9 +205,14 @@ impl ContractInteract {
         let new_name = ManagedBuffer::new_from_bytes(&b""[..]);
         let new_uri = ManagedBuffer::new_from_bytes(&b""[..]);
         let new_public_key = ManagedBuffer::new_from_bytes(&b""[..]);
-        let signature = ManagedBuffer::new_from_bytes(&b""[..]);
-        let metadata = OptionalValue::Some(MetadataEntry::<StaticApi>::default());
-        let services = OptionalValue::Some(ServiceConfigInput::<StaticApi>::default());
+        let metadata = OptionalValue::Some(MultiValueEncodedCounted::<
+            StaticApi,
+            MetadataEntry<StaticApi>,
+        >::new());
+        let services = OptionalValue::Some(MultiValueEncodedCounted::<
+            StaticApi,
+            ServiceConfigInput<StaticApi>,
+        >::new());
 
         let response = self
             .interactor
@@ -215,14 +221,7 @@ impl ContractInteract {
             .to(self.state.current_address())
             .gas(30_000_000u64)
             .typed(identity_registry_proxy::IdentityRegistryProxy)
-            .update_agent(
-                new_name,
-                new_uri,
-                new_public_key,
-                signature,
-                metadata,
-                services,
-            )
+            .update_agent(new_name, new_uri, new_public_key, metadata, services)
             .payment((
                 EsdtTokenIdentifier::from(token_id.as_str()),
                 token_nonce,
@@ -237,7 +236,7 @@ impl ContractInteract {
 
     pub async fn set_metadata(&mut self) {
         let nonce = 0u64;
-        let entries = MetadataEntry::<StaticApi>::default();
+        let entries = MultiValueEncodedCounted::<StaticApi, MetadataEntry<StaticApi>>::new();
 
         let response = self
             .interactor
@@ -256,7 +255,7 @@ impl ContractInteract {
 
     pub async fn set_service_configs_endpoint(&mut self) {
         let nonce = 0u64;
-        let configs = ServiceConfigInput::<StaticApi>::default();
+        let configs = MultiValueEncodedCounted::<StaticApi, ServiceConfigInput<StaticApi>>::new();
 
         let response = self
             .interactor

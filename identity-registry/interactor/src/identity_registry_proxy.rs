@@ -96,13 +96,12 @@ where
             .original_result()
     }
 
-    /// Register a new agent with name, URI, public key, optional metadata, and optional service configs. 
     pub fn register_agent<
         Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg2: ProxyArg<ManagedBuffer<Env::Api>>,
-        Arg3: ProxyArg<MultiValueEncoded<Env::Api, common::structs::MetadataEntry<Env::Api>>>,
-        Arg4: ProxyArg<MultiValueEncoded<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>,
+        Arg3: ProxyArg<MultiValueEncodedCounted<Env::Api, common::structs::MetadataEntry<Env::Api>>>,
+        Arg4: ProxyArg<MultiValueEncodedCounted<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>,
     >(
         self,
         name: Arg0,
@@ -127,8 +126,8 @@ where
         Arg0: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg1: ProxyArg<ManagedBuffer<Env::Api>>,
         Arg2: ProxyArg<ManagedBuffer<Env::Api>>,
-        Arg3: ProxyArg<OptionalValue<MultiValueEncoded<Env::Api, common::structs::MetadataEntry<Env::Api>>>>,
-        Arg4: ProxyArg<OptionalValue<MultiValueEncoded<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>>,
+        Arg3: ProxyArg<OptionalValue<MultiValueEncodedCounted<Env::Api, common::structs::MetadataEntry<Env::Api>>>>,
+        Arg4: ProxyArg<OptionalValue<MultiValueEncodedCounted<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>>,
     >(
         self,
         new_name: Arg0,
@@ -150,7 +149,7 @@ where
     /// Set or update metadata entries for an agent. O(1) per entry via MapMapper. 
     pub fn set_metadata<
         Arg0: ProxyArg<u64>,
-        Arg1: ProxyArg<MultiValueEncoded<Env::Api, common::structs::MetadataEntry<Env::Api>>>,
+        Arg1: ProxyArg<MultiValueEncodedCounted<Env::Api, common::structs::MetadataEntry<Env::Api>>>,
     >(
         self,
         nonce: Arg0,
@@ -167,7 +166,7 @@ where
     /// Set or update service configurations for an agent. 
     pub fn set_service_configs_endpoint<
         Arg0: ProxyArg<u64>,
-        Arg1: ProxyArg<MultiValueEncoded<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>,
+        Arg1: ProxyArg<MultiValueEncodedCounted<Env::Api, common::structs::ServiceConfigInput<Env::Api>>>,
     >(
         self,
         nonce: Arg0,

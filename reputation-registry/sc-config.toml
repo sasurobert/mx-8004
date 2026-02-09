@@ -1,5 +1,2 @@
 [[proxy]]
-path = "../proxies/src/reputation_registry_proxy.rs"
-
-[[proxy]]
 path = "interactor/src/reputation_registry_proxy.rs"

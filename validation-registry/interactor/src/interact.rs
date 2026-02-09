@@ -24,13 +24,13 @@ pub async fn validation_registry_cli() {
     match cmd.as_str() {
         "deploy" => interact.deploy().await,
         "upgrade" => interact.upgrade().await,
-        "initJob" => interact.init_job().await,
-        "submitProof" => interact.submit_proof().await,
-        "verifyJob" => interact.verify_job().await,
-        "cleanOldJobs" => interact.clean_old_jobs().await,
-        "isJobVerified" => interact.is_job_verified().await,
-        "getJobData" => interact.get_job_data().await,
-        "setIdentityRegistryAddress" => interact.set_identity_registry_address().await,
+        "init_job" => interact.init_job().await,
+        "submit_proof" => interact.submit_proof().await,
+        "verify_job" => interact.verify_job().await,
+        "clean_old_jobs" => interact.clean_old_jobs().await,
+        "is_job_verified" => interact.is_job_verified().await,
+        "get_job_data" => interact.get_job_data().await,
+        "set_identity_registry_address" => interact.set_identity_registry_address().await,
         _ => panic!("unknown command: {}", &cmd),
     }
 }
