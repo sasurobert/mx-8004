@@ -44,11 +44,19 @@ mod cs {
 
         let bob = interact.agent_owner.clone();
         interact
-            .register_agent(&bob, b"TestAgent", b"https://agent.example.com", b"pubkey123")
+            .register_agent(
+                &bob,
+                b"TestAgent",
+                b"https://agent.example.com",
+                b"pubkey123",
+            )
             .await;
 
         let token_id = interact.query_agent_token_id().await;
-        assert!(!token_id.is_empty(), "Token ID should exist after registration");
+        assert!(
+            !token_id.is_empty(),
+            "Token ID should exist after registration"
+        );
         println!("Agent registered and confirmed with token: {token_id}");
     }
 
@@ -60,7 +68,12 @@ mod cs {
 
         let bob = interact.agent_owner.clone();
         interact
-            .register_agent(&bob, b"TestAgent", b"https://agent.example.com", b"pubkey123")
+            .register_agent(
+                &bob,
+                b"TestAgent",
+                b"https://agent.example.com",
+                b"pubkey123",
+            )
             .await;
 
         let agent_nonce = 1u64;
@@ -99,7 +112,12 @@ mod cs {
 
         let bob = interact.agent_owner.clone();
         interact
-            .register_agent(&bob, b"TestAgent", b"https://agent.example.com", b"pubkey123")
+            .register_agent(
+                &bob,
+                b"TestAgent",
+                b"https://agent.example.com",
+                b"pubkey123",
+            )
             .await;
 
         let agent_nonce = 1u64;
@@ -114,9 +132,7 @@ mod cs {
         interact.verify_job(b"job-001").await;
 
         // Reputation (cross-contract storage reads from validation)
-        interact
-            .authorize_feedback(&bob, b"job-001", &carol)
-            .await;
+        interact.authorize_feedback(&bob, b"job-001", &carol).await;
         interact
             .submit_feedback(&carol, b"job-001", agent_nonce, 85)
             .await;
@@ -149,7 +165,12 @@ mod cs {
 
         let bob = interact.agent_owner.clone();
         interact
-            .register_agent(&bob, b"TestAgent", b"https://agent.example.com", b"pubkey123")
+            .register_agent(
+                &bob,
+                b"TestAgent",
+                b"https://agent.example.com",
+                b"pubkey123",
+            )
             .await;
 
         // Second registration from same address should fail
@@ -189,7 +210,12 @@ mod cs {
 
         let bob = interact.agent_owner.clone();
         interact
-            .register_agent(&bob, b"TestAgent", b"https://agent.example.com", b"pubkey123")
+            .register_agent(
+                &bob,
+                b"TestAgent",
+                b"https://agent.example.com",
+                b"pubkey123",
+            )
             .await;
 
         let carol = interact.client.clone();
@@ -202,12 +228,7 @@ mod cs {
 
         // Non-owner (bob) tries to verify — should fail with only_owner error
         interact
-            .verify_job_expect_err(
-                &bob,
-                b"job-001",
-                4,
-                "Endpoint can only be called by owner",
-            )
+            .verify_job_expect_err(&bob, b"job-001", 4, "Endpoint can only be called by owner")
             .await;
 
         println!("Non-owner verify correctly rejected");
@@ -241,7 +262,12 @@ mod cs {
 
         let bob = interact.agent_owner.clone();
         interact
-            .register_agent(&bob, b"TestAgent", b"https://agent.example.com", b"pubkey123")
+            .register_agent(
+                &bob,
+                b"TestAgent",
+                b"https://agent.example.com",
+                b"pubkey123",
+            )
             .await;
 
         let carol = interact.client.clone();
@@ -253,5 +279,72 @@ mod cs {
             .await;
 
         println!("Duplicate job init correctly rejected");
+    }
+
+    /// Test: register agent with a free service (price=0, service_id=1),
+    /// then init_job with that service_id but NO payment → should succeed.
+    #[tokio::test]
+    #[serial]
+    async fn test_init_job_free_service_cs() {
+        let _ = env_logger::try_init();
+        let mut interact = CsInteract::new().await;
+
+        let bob = interact.agent_owner.clone();
+        // Register agent with service_id=1, price=0, EGLD, nonce=0
+        interact
+            .register_agent_with_meta(
+                &bob,
+                b"FreeBot",
+                b"https://free.example.com",
+                b"pubkey123",
+                &[],
+                &[(1, 0, b"EGLD-000000", 0)], // free service
+            )
+            .await;
+
+        let carol = interact.client.clone();
+        // Init job with service_id=1 (free) and no payment → should succeed
+        interact
+            .init_job_with_free_service(&carol, b"free-job-001", 1u64, 1)
+            .await;
+
+        println!("Free service job init succeeded without payment");
+    }
+
+    /// Test: register agent with a paid service (1 EGLD, service_id=1),
+    /// then init_job with that service_id but NO payment → ERR_INSUFFICIENT_PAYMENT.
+    #[tokio::test]
+    #[serial]
+    async fn test_init_job_no_payment_for_paid_service_cs() {
+        let _ = env_logger::try_init();
+        let mut interact = CsInteract::new().await;
+
+        let bob = interact.agent_owner.clone();
+        // Register agent with service_id=1, price=1 EGLD
+        interact
+            .register_agent_with_meta(
+                &bob,
+                b"PaidBot",
+                b"https://paid.example.com",
+                b"pubkey123",
+                &[],
+                &[(1, 1_000_000_000_000_000_000, b"EGLD-000000", 0)], // 1 EGLD
+            )
+            .await;
+
+        let carol = interact.client.clone();
+        // Init job with service_id=1 but NO payment → should fail
+        interact
+            .init_job_with_free_service_expect_err(
+                &carol,
+                b"no-pay-job-001",
+                1u64,
+                1,
+                4,
+                "Insufficient payment",
+            )
+            .await;
+
+        println!("No-payment for paid service correctly rejected");
     }
 }

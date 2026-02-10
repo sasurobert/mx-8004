@@ -258,6 +258,30 @@ impl CsInteract {
             .await;
     }
 
+    /// Calls init_job with a service_id but NO payment (for free services with price=0).
+    pub async fn init_job_with_free_service(
+        &mut self,
+        from: &Address,
+        job_id: &[u8],
+        agent_nonce: u64,
+        service_id: u32,
+    ) {
+        self.interactor
+            .tx()
+            .from(from)
+            .to(&self.validation_addr)
+            .gas(30_000_000u64)
+            .typed(ValidationRegistryProxy)
+            .init_job(
+                ManagedBuffer::<StaticApi>::from(job_id),
+                agent_nonce,
+                OptionalValue::Some(service_id),
+            )
+            .returns(ReturnsResultUnmanaged)
+            .run()
+            .await;
+    }
+
     pub async fn submit_proof(&mut self, from: &Address, job_id: &[u8], proof: &[u8]) {
         self.interactor
             .tx()
@@ -497,6 +521,32 @@ impl CsInteract {
                 ManagedBuffer::<StaticApi>::from(job_id),
                 agent_nonce,
                 OptionalValue::<u32>::None,
+            )
+            .returns(ExpectError(err_code, err_msg))
+            .run()
+            .await;
+    }
+
+    /// Calls init_job with a service_id but NO payment — expects error.
+    pub async fn init_job_with_free_service_expect_err(
+        &mut self,
+        from: &Address,
+        job_id: &[u8],
+        agent_nonce: u64,
+        service_id: u32,
+        err_code: u64,
+        err_msg: &str,
+    ) {
+        self.interactor
+            .tx()
+            .from(from)
+            .to(&self.validation_addr)
+            .gas(30_000_000u64)
+            .typed(ValidationRegistryProxy)
+            .init_job(
+                ManagedBuffer::<StaticApi>::from(job_id),
+                agent_nonce,
+                OptionalValue::Some(service_id),
             )
             .returns(ExpectError(err_code, err_msg))
             .run()

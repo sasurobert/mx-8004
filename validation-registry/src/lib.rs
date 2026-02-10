@@ -58,20 +58,25 @@ pub trait ValidationRegistry:
             let service_config_map = self.external_agent_service_config(identity_addr, agent_nonce);
 
             if let Some(service_payment) = service_config_map.get(&sid) {
-                let pay = self.call_value().single();
+                if let Some(pay) = self.call_value().single_optional() {
+                    require!(
+                        pay.token_identifier == service_payment.token_identifier
+                            && pay.token_nonce == service_payment.token_nonce,
+                        ERR_INVALID_PAYMENT
+                    );
 
-                require!(
-                    pay.token_identifier == service_payment.token_identifier
-                        && pay.token_nonce == service_payment.token_nonce,
-                    ERR_INVALID_PAYMENT
-                );
+                    require!(
+                        pay.amount >= service_payment.amount,
+                        ERR_INSUFFICIENT_PAYMENT
+                    );
 
-                require!(
-                    pay.amount >= service_payment.amount,
-                    ERR_INSUFFICIENT_PAYMENT
-                );
-
-                self.tx().to(&agent_owner).payment(pay).transfer();
+                    if pay.amount > 0u64 {
+                        self.tx().to(&agent_owner).payment(pay.clone()).transfer();
+                    }
+                } else {
+                    // No payment sent — only valid if service is free
+                    require!(service_payment.amount == 0u64, ERR_INSUFFICIENT_PAYMENT);
+                }
             }
         }
     }
