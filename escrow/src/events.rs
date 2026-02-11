@@ -7,7 +7,7 @@ pub trait EventsModule {
         &self,
         #[indexed] job_id: &ManagedBuffer,
         #[indexed] employer: &ManagedAddress,
-        amount: BigUint,
+        amount: &NonZeroBigUint,
     );
 
     #[event("escrow_released")]
@@ -15,7 +15,7 @@ pub trait EventsModule {
         &self,
         #[indexed] job_id: &ManagedBuffer,
         #[indexed] receiver: &ManagedAddress,
-        amount: BigUint,
+        amount: &NonZeroBigUint,
     );
 
     #[event("escrow_refunded")]
@@ -23,6 +23,6 @@ pub trait EventsModule {
         &self,
         #[indexed] job_id: &ManagedBuffer,
         #[indexed] employer: &ManagedAddress,
-        amount: BigUint,
+        amount: &NonZeroBigUint,
     );
 }

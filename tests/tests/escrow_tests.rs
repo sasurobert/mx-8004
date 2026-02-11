@@ -1,5 +1,5 @@
 use escrow::storage::EscrowStatus;
-use multiversx_sc::types::{BigUint, ManagedAddress, ManagedBuffer};
+use multiversx_sc::imports::*;
 use multiversx_sc_scenario::api::StaticApi;
 use mx_8004_tests::{constants::*, setup::EscrowTestState};
 
@@ -34,7 +34,7 @@ fn test_deposit_egld() {
     let escrow = state.query_escrow(b"job_egld_1");
     assert_eq!(escrow.employer, EMPLOYER.to_managed_address());
     assert_eq!(escrow.receiver, AGENT_OWNER.to_managed_address());
-    assert_eq!(escrow.amount, BigUint::<StaticApi>::from(500_000u64));
+    assert_eq!(escrow.payment.amount, 500_000u64);
     assert_eq!(
         escrow.poa_hash,
         ManagedBuffer::<StaticApi>::from(b"poa_hash_123")
@@ -64,7 +64,7 @@ fn test_deposit_esdt() {
     let escrow = state.query_escrow(b"job_esdt_1");
     assert_eq!(escrow.employer, EMPLOYER.to_managed_address());
     assert_eq!(escrow.receiver, AGENT_OWNER.to_managed_address());
-    assert_eq!(escrow.amount, BigUint::<StaticApi>::from(1_000u64));
+    assert_eq!(escrow.payment.amount, 1_000u64);
     assert_eq!(escrow.status, EscrowStatus::Active);
 }
 
@@ -83,7 +83,7 @@ fn test_deposit_zero_amount() {
         b"poa_hash",
         1_000_000,
         0,
-        "Deposit amount must be greater than zero",
+        "incorrect number of transfers",
     );
 }
 
@@ -585,7 +585,7 @@ fn test_full_lifecycle_egld() {
     // 4. Verify escrow data
     let escrow = state.query_escrow(b"lifecycle_egld");
     assert_eq!(escrow.status, EscrowStatus::Active);
-    assert_eq!(escrow.amount, BigUint::<StaticApi>::from(1_000_000u64));
+    assert_eq!(escrow.payment.amount, 1_000_000u64);
 
     // 5. Release
     state.release(&EMPLOYER, b"lifecycle_egld");
@@ -647,7 +647,7 @@ fn test_full_lifecycle_esdt() {
     // 4. Verify escrow
     let escrow = state.query_escrow(b"lifecycle_esdt");
     assert_eq!(escrow.status, EscrowStatus::Active);
-    assert_eq!(escrow.amount, BigUint::<StaticApi>::from(500u64));
+    assert_eq!(escrow.payment.amount, 500u64);
 
     // 5. Release
     state.release(&EMPLOYER, b"lifecycle_esdt");
