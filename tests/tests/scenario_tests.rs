@@ -1339,22 +1339,22 @@ fn test_query_reputation_contract_addresses() {
 fn test_is_job_verified_view() {
     let mut state = AgentTestState::new();
     state.register_agent(
-        &OWNER,
+        &OWNER_ADDRESS,
         b"IsVerifiedBot",
         b"https://example.com/manifest",
         &[0u8; 32],
         vec![(b"type", b"bot")],
         vec![],
     );
-    state.init_job(&OWNER, b"job_verify_view", 1, OptionalValue::None);
+    state.init_job(&OWNER_ADDRESS, b"job_verify_view", 1, None);
 
     // Not verified before validation
     assert!(!state.query_is_job_verified(b"job_verify_view"));
 
     // Submit proof + validation
-    state.submit_proof(&OWNER, b"job_verify_view", b"proof-hash");
+    state.submit_proof(&OWNER_ADDRESS, b"job_verify_view", b"proof-hash");
     state.validation_request(
-        &OWNER,
+        &OWNER_ADDRESS,
         b"job_verify_view",
         &VALIDATOR,
         b"https://oracle.example.com/verify",
@@ -1381,7 +1381,7 @@ fn test_is_job_verified_view() {
 fn test_multi_job_reputation_average() {
     let mut state = AgentTestState::new();
     state.register_agent(
-        &OWNER,
+        &OWNER_ADDRESS,
         b"MultiRepBot",
         b"https://example.com/manifest",
         &[0u8; 32],
@@ -1390,10 +1390,10 @@ fn test_multi_job_reputation_average() {
     );
 
     // Job 1: rating 80
-    state.init_job(&OWNER, b"rep_avg_1", 1, OptionalValue::None);
-    state.submit_proof(&OWNER, b"rep_avg_1", b"proof-1");
+    state.init_job(&OWNER_ADDRESS, b"rep_avg_1", 1, None);
+    state.submit_proof(&OWNER_ADDRESS, b"rep_avg_1", b"proof-1");
     state.validation_request(
-        &OWNER,
+        &OWNER_ADDRESS,
         b"rep_avg_1",
         &VALIDATOR,
         b"https://oracle.example.com/verify",
@@ -1407,13 +1407,13 @@ fn test_multi_job_reputation_average() {
         b"resp-avg-1",
         b"approved",
     );
-    state.submit_feedback(&OWNER, b"rep_avg_1", 1, 80);
+    state.submit_feedback(&OWNER_ADDRESS, b"rep_avg_1", 1, 80);
 
     // Job 2: rating 60
-    state.init_job(&OWNER, b"rep_avg_2", 1, OptionalValue::None);
-    state.submit_proof(&OWNER, b"rep_avg_2", b"proof-2");
+    state.init_job(&OWNER_ADDRESS, b"rep_avg_2", 1, None);
+    state.submit_proof(&OWNER_ADDRESS, b"rep_avg_2", b"proof-2");
     state.validation_request(
-        &OWNER,
+        &OWNER_ADDRESS,
         b"rep_avg_2",
         &VALIDATOR,
         b"https://oracle.example.com/verify",
@@ -1427,13 +1427,13 @@ fn test_multi_job_reputation_average() {
         b"resp-avg-2",
         b"approved",
     );
-    state.submit_feedback(&OWNER, b"rep_avg_2", 1, 60);
+    state.submit_feedback(&OWNER_ADDRESS, b"rep_avg_2", 1, 60);
 
     // Job 3: rating 100
-    state.init_job(&OWNER, b"rep_avg_3", 1, OptionalValue::None);
-    state.submit_proof(&OWNER, b"rep_avg_3", b"proof-3");
+    state.init_job(&OWNER_ADDRESS, b"rep_avg_3", 1, None);
+    state.submit_proof(&OWNER_ADDRESS, b"rep_avg_3", b"proof-3");
     state.validation_request(
-        &OWNER,
+        &OWNER_ADDRESS,
         b"rep_avg_3",
         &VALIDATOR,
         b"https://oracle.example.com/verify",
@@ -1447,7 +1447,7 @@ fn test_multi_job_reputation_average() {
         b"resp-avg-3",
         b"approved",
     );
-    state.submit_feedback(&OWNER, b"rep_avg_3", 1, 100);
+    state.submit_feedback(&OWNER_ADDRESS, b"rep_avg_3", 1, 100);
 
     // Average should be (80+60+100)/3 = 80
     let score = state.query_reputation_score(1);
@@ -1469,17 +1469,23 @@ fn test_multi_job_reputation_average() {
 fn test_submit_proof_with_nft_happy_path() {
     let mut state = AgentTestState::new();
     state.register_agent(
-        &OWNER,
+        &OWNER_ADDRESS,
         b"NFTProofBot",
         b"https://example.com/manifest",
         &[0u8; 32],
         vec![(b"type", b"worker")],
         vec![],
     );
-    state.init_job(&OWNER, b"job_nft_proof", 1, OptionalValue::None);
+    state.init_job(&OWNER_ADDRESS, b"job_nft_proof", 1, None);
 
     // Owner holds AGENT-abcdef nonce=1 after register_agent
-    state.submit_proof_with_nft(&OWNER, b"job_nft_proof", b"nft-proof-hash", &AGENT_TOKEN, 1);
+    state.submit_proof_with_nft(
+        &OWNER_ADDRESS,
+        b"job_nft_proof",
+        b"nft-proof-hash",
+        &AGENT_TOKEN,
+        1,
+    );
 
     // Verify proof was stored — job should be Pending after proof
     let job_data = state.query_job_data(b"job_nft_proof");
@@ -1495,57 +1501,160 @@ fn test_submit_proof_with_nft_happy_path() {
 }
 
 // ============================================
-// 51. submit_proof_with_nft — Wrong Token
+// 51. submit_proof_with_nft — Nonexistent Job
 // ============================================
 
+// NOTE: Wrong-token and wrong-nonce error paths are tested via chain-sim (Suite Q/S)
+// because the RustVM validates ESDT balances before contract execution,
+// making it impossible to send tokens the caller doesn't hold.
+
 #[test]
-fn test_submit_proof_with_nft_wrong_token() {
+fn test_submit_proof_with_nft_nonexistent_job() {
     let mut state = AgentTestState::new();
     state.register_agent(
-        &OWNER,
-        b"NFTWrongBot",
+        &OWNER_ADDRESS,
+        b"NFTErrBot",
         b"https://example.com/manifest",
         &[0u8; 32],
         vec![(b"type", b"worker")],
         vec![],
     );
-    state.init_job(&OWNER, b"job_nft_wrong", 1, OptionalValue::None);
 
-    // Use WRONG_TOKEN instead of AGENT_TOKEN → should fail
+    // Try to submit proof for a job that doesn't exist
     state.submit_proof_with_nft_expect_err(
-        &OWNER,
-        b"job_nft_wrong",
+        &OWNER_ADDRESS,
+        b"nonexistent_job",
         b"nft-proof-hash",
-        &WRONG_TOKEN,
+        &AGENT_TOKEN,
         1,
-        "Invalid agent NFT: wrong token ID or nonce",
+        "Job not found",
     );
 }
 
 // ============================================
-// 52. submit_proof_with_nft — Wrong Nonce
+// 52. Progressive validation_response (multiple calls)
 // ============================================
 
 #[test]
-fn test_submit_proof_with_nft_wrong_nonce() {
+fn test_validation_response_progressive() {
     let mut state = AgentTestState::new();
     state.register_agent(
-        &OWNER,
-        b"NFTNonceBot",
+        &OWNER_ADDRESS,
+        b"ProgressiveBot",
+        b"https://example.com/manifest",
+        &[0u8; 32],
+        vec![(b"type", b"validator")],
+        vec![],
+    );
+    state.init_job(&OWNER_ADDRESS, b"job_progressive", 1, None);
+    state.submit_proof(&OWNER_ADDRESS, b"job_progressive", b"initial-proof");
+    state.validation_request(
+        &OWNER_ADDRESS,
+        b"job_progressive",
+        &VALIDATOR,
+        b"https://oracle.example.com/verify",
+        b"req-progressive",
+    );
+
+    // First validation_response — partial score
+    state.validation_response(
+        &VALIDATOR,
+        b"req-progressive",
+        50,
+        b"https://oracle.example.com/partial",
+        b"resp-partial",
+        b"partial",
+    );
+    assert!(state.query_is_job_verified(b"job_progressive"));
+
+    // Second (progressive) validation_response — updated score
+    state.validation_response(
+        &VALIDATOR,
+        b"req-progressive",
+        95,
+        b"https://oracle.example.com/final",
+        b"resp-final",
+        b"approved",
+    );
+    // Job should still be verified
+    assert!(state.query_is_job_verified(b"job_progressive"));
+}
+
+// ============================================
+// 53. submit_feedback with rating boundary values (0, 100)
+// ============================================
+
+#[test]
+fn test_submit_feedback_rating_boundaries() {
+    let mut state = AgentTestState::new();
+    state.register_agent(
+        &OWNER_ADDRESS,
+        b"BoundaryBot",
         b"https://example.com/manifest",
         &[0u8; 32],
         vec![(b"type", b"worker")],
         vec![],
     );
-    state.init_job(&OWNER, b"job_nft_nonce", 1, OptionalValue::None);
 
-    // Use correct token but wrong nonce (999 instead of 1) → should fail
-    state.submit_proof_with_nft_expect_err(
-        &OWNER,
-        b"job_nft_nonce",
-        b"nft-proof-hash",
-        &AGENT_TOKEN,
-        999,
-        "Invalid agent NFT: wrong token ID or nonce",
+    // Job 1: rating = 0 (lowest possible)
+    state.init_job(&OWNER_ADDRESS, b"job_boundary_0", 1, None);
+    state.submit_proof(&OWNER_ADDRESS, b"job_boundary_0", b"proof-zero");
+    state.validation_request(
+        &OWNER_ADDRESS,
+        b"job_boundary_0",
+        &VALIDATOR,
+        b"https://oracle.example.com/verify",
+        b"req-boundary-0",
+    );
+    state.validation_response(
+        &VALIDATOR,
+        b"req-boundary-0",
+        1,
+        b"https://oracle.example.com/result",
+        b"resp-boundary-0",
+        b"approved",
+    );
+    state.submit_feedback(&OWNER_ADDRESS, b"job_boundary_0", 1, 0);
+
+    let score_after_zero = state.query_reputation_score(1);
+    assert_eq!(score_after_zero, 0, "Rating 0 → score should be 0");
+
+    // Job 2: rating = 100 → avg should be (0 + 100) / 2 = 50
+    state.init_job(&OWNER_ADDRESS, b"job_boundary_100", 1, None);
+    state.submit_proof(&OWNER_ADDRESS, b"job_boundary_100", b"proof-hundred");
+    state.validation_request(
+        &OWNER_ADDRESS,
+        b"job_boundary_100",
+        &VALIDATOR,
+        b"https://oracle.example.com/verify",
+        b"req-boundary-100",
+    );
+    state.validation_response(
+        &VALIDATOR,
+        b"req-boundary-100",
+        1,
+        b"https://oracle.example.com/result",
+        b"resp-boundary-100",
+        b"approved",
+    );
+    state.submit_feedback(&OWNER_ADDRESS, b"job_boundary_100", 1, 100);
+
+    let score_after_hundred = state.query_reputation_score(1);
+    assert_eq!(score_after_hundred, 50, "Average of (0 + 100) / 2 = 50");
+}
+
+// ============================================
+// 54. register_agent on contract with no token issued
+// ============================================
+
+#[test]
+fn test_register_agent_token_not_issued() {
+    let mut state = AgentTestState::new_no_token();
+    state.register_agent_expect_err(
+        &AGENT_OWNER,
+        b"ShouldFail",
+        b"https://example.com/manifest",
+        b"pubkey123",
+        "Token not issued",
     );
 }

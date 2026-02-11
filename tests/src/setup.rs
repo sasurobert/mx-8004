@@ -107,6 +107,59 @@ impl AgentTestState {
         }
     }
 
+    /// Create test state with identity registry deployed but WITHOUT issuing the agent token.
+    /// Used to test the `register_agent` error path when token is not issued.
+    pub fn new_no_token() -> Self {
+        let mut world = world();
+
+        world
+            .account(OWNER_ADDRESS)
+            .nonce(1)
+            .balance(100_000_000_000_000_000u64);
+
+        let identity_sc = world
+            .tx()
+            .from(OWNER_ADDRESS)
+            .typed(IdentityRegistryProxy)
+            .init()
+            .code(IDENTITY_CODE)
+            .returns(ReturnsNewManagedAddress)
+            .new_address(IDENTITY_SC_ADDRESS)
+            .run();
+
+        // NOTE: Deliberately NOT setting agent_token_id — this is the "token not issued" state
+
+        let validation_sc = world
+            .tx()
+            .from(OWNER_ADDRESS)
+            .typed(ValidationRegistryProxy)
+            .init(identity_sc.clone())
+            .code(VALIDATION_CODE)
+            .returns(ReturnsNewManagedAddress)
+            .new_address(VALIDATION_SC_ADDRESS)
+            .run();
+
+        let reputation_sc = world
+            .tx()
+            .from(OWNER_ADDRESS)
+            .typed(ReputationRegistryProxy)
+            .init(validation_sc.clone(), identity_sc.clone())
+            .code(REPUTATION_CODE)
+            .returns(ReturnsNewManagedAddress)
+            .new_address(REPUTATION_SC_ADDRESS)
+            .run();
+
+        world.account(AGENT_OWNER).nonce(1).balance(1_000_000u64);
+        world.account(CLIENT).nonce(1).balance(1_000_000u64);
+
+        Self {
+            world,
+            identity_sc,
+            validation_sc,
+            reputation_sc,
+        }
+    }
+
     // ── Raw call helpers for Counted multi-value endpoints ──
 
     /// Build raw args for registerAgent: name, uri, pubkey, count_meta, meta..., count_svc, svc...
@@ -378,7 +431,7 @@ impl AgentTestState {
             .typed(ValidationRegistryProxy)
             .submit_proof_with_nft(ManagedBuffer::from(job_id), ManagedBuffer::from(proof))
             .single_esdt(
-                &TokenIdentifier::from(*token_id),
+                &EsdtTokenIdentifier::from(*token_id),
                 nonce,
                 &BigUint::from(1u64),
             )
@@ -401,7 +454,7 @@ impl AgentTestState {
             .typed(ValidationRegistryProxy)
             .submit_proof_with_nft(ManagedBuffer::from(job_id), ManagedBuffer::from(proof))
             .single_esdt(
-                &TokenIdentifier::from(*token_id),
+                &EsdtTokenIdentifier::from(*token_id),
                 nonce,
                 &BigUint::from(1u64),
             )
