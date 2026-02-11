@@ -379,7 +379,6 @@ impl CsInteract {
 
     // ── Reputation Registry ──
 
-
     pub async fn give_feedback_simple(
         &mut self,
         from: &Address,
@@ -506,7 +505,6 @@ impl CsInteract {
             .run()
             .await;
     }
-
 
     pub async fn submit_proof_expect_err(
         &mut self,

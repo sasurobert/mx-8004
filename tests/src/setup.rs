@@ -574,7 +574,6 @@ impl AgentTestState {
 
     // ── Reputation Registry ──
 
-
     pub fn give_feedback_simple(
         &mut self,
         from: &multiversx_sc::types::TestAddress,
@@ -1103,7 +1102,6 @@ impl AgentTestState {
             .returns(ExpectMessage(err_msg))
             .run();
     }
-
 
     pub fn append_response_expect_err(
         &mut self,

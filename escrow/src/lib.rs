@@ -45,8 +45,7 @@ pub trait EscrowContract:
         poa_hash: ManagedBuffer,
         deadline: TimestampSeconds,
     ) {
-        let payment = self.call_value().egld_or_single_esdt();
-        require!(payment.amount > 0u64, ERR_ZERO_DEPOSIT);
+        let payment = self.call_value().single();
 
         let current_timestamp = self.blockchain().get_block_timestamp_seconds();
         require!(deadline > current_timestamp, ERR_DEADLINE_IN_PAST);
@@ -59,9 +58,7 @@ pub trait EscrowContract:
         let escrow = EscrowData {
             employer: caller.clone(),
             receiver,
-            token_id: payment.token_identifier.clone(),
-            token_nonce: payment.token_nonce,
-            amount: payment.amount.clone(),
+            payment: payment.clone(),
             poa_hash,
             deadline,
             status: EscrowStatus::Active,
@@ -70,7 +67,7 @@ pub trait EscrowContract:
         // Effects: store escrow
         escrow_mapper.set(&escrow);
 
-        self.escrow_deposited_event(&job_id, &caller, payment.amount);
+        self.escrow_deposited_event(&job_id, &caller, &payment.amount);
     }
 
     /// Release escrowed funds to the receiver.
@@ -99,19 +96,15 @@ pub trait EscrowContract:
 
         // Effects: mark as released BEFORE interactions
         escrow.status = EscrowStatus::Released;
-        let receiver = escrow.receiver.clone();
-        let amount = escrow.amount.clone();
-        let token_id = escrow.token_id.clone();
-        let token_nonce = escrow.token_nonce;
         escrow_mapper.set(&escrow);
 
         // Interactions: transfer funds to receiver
         self.tx()
-            .to(&receiver)
-            .egld_or_single_esdt(&token_id, token_nonce, &amount)
+            .to(&escrow.receiver)
+            .payment(&escrow.payment)
             .transfer();
 
-        self.escrow_released_event(&job_id, &receiver, amount);
+        self.escrow_released_event(&job_id, &escrow.receiver, &escrow.payment.amount);
     }
 
     /// Refund escrowed funds to the employer if the deadline has passed.
@@ -129,18 +122,14 @@ pub trait EscrowContract:
 
         // Effects: mark as refunded BEFORE interactions
         escrow.status = EscrowStatus::Refunded;
-        let employer = escrow.employer.clone();
-        let amount = escrow.amount.clone();
-        let token_id = escrow.token_id.clone();
-        let token_nonce = escrow.token_nonce;
         escrow_mapper.set(&escrow);
 
         // Interactions: transfer funds back to employer
         self.tx()
-            .to(&employer)
-            .egld_or_single_esdt(&token_id, token_nonce, &amount)
+            .to(&escrow.employer)
+            .payment(&escrow.payment)
             .transfer();
 
-        self.escrow_refunded_event(&job_id, &employer, amount);
+        self.escrow_refunded_event(&job_id, &escrow.employer, &escrow.payment.amount);
     }
 }

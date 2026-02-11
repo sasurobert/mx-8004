@@ -14,13 +14,17 @@ pub enum EscrowStatus {
 #[type_abi]
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Debug)]
 pub struct EscrowData<M: ManagedTypeApi> {
+    /// Who deposited the funds
     pub employer: ManagedAddress<M>,
+    /// Who receives on release (agent)
     pub receiver: ManagedAddress<M>,
-    pub token_id: EgldOrEsdtTokenIdentifier<M>,
-    pub token_nonce: u64,
-    pub amount: BigUint<M>,
+    /// Payment details: token, nonce, amount
+    pub payment: Payment<M>,
+    /// Proof-of-Agreement hash
     pub poa_hash: ManagedBuffer<M>,
+    /// Unix timestamp (seconds) of the block for the escrow deadline
     pub deadline: TimestampSeconds,
+    /// Current state of the escrow
     pub status: EscrowStatus,
 }
 
