@@ -574,7 +574,6 @@ impl AgentTestState {
 
     // ── Reputation Registry ──
 
-
     pub fn give_feedback_simple(
         &mut self,
         from: &multiversx_sc::types::TestAddress,
@@ -1104,7 +1103,6 @@ impl AgentTestState {
             .run();
     }
 
-
     pub fn append_response_expect_err(
         &mut self,
         from: &multiversx_sc::types::TestAddress,
@@ -1186,6 +1184,26 @@ impl AgentTestState {
             .typed(IdentityRegistryProxy)
             .get_agent(nonce)
             .returns(ReturnsResult)
+            .run()
+    }
+
+    pub fn query_agent_expect_err(&mut self, nonce: u64, err_msg: &str) {
+        self.world
+            .query()
+            .to(IDENTITY_SC_ADDRESS)
+            .typed(IdentityRegistryProxy)
+            .get_agent(nonce)
+            .returns(ExpectMessage(err_msg))
+            .run()
+    }
+
+    pub fn query_agent_owner_expect_err(&mut self, nonce: u64, err_msg: &str) {
+        self.world
+            .query()
+            .to(IDENTITY_SC_ADDRESS)
+            .typed(IdentityRegistryProxy)
+            .get_agent_owner(nonce)
+            .returns(ExpectMessage(err_msg))
             .run()
     }
 

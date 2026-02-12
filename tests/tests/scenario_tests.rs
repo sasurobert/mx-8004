@@ -741,6 +741,18 @@ fn test_query_get_agent_view() {
 }
 
 // ============================================
+// 23b. Query Non-Existent Agent (Agent not found guard)
+// ============================================
+
+#[test]
+fn test_query_nonexistent_agent() {
+    let mut state = AgentTestState::new();
+    // No agents registered — nonce 99 does not exist
+    state.query_agent_expect_err(99, "Agent not found");
+    state.query_agent_owner_expect_err(99, "Agent not found");
+}
+
+// ============================================
 // 24. Query Agent Metadata Bulk
 // ============================================
 

@@ -7,11 +7,13 @@ use crate::structs::AgentDetails;
 pub trait ViewsModule: crate::storage::StorageModule {
     #[view(get_agent)]
     fn get_agent(&self, nonce: u64) -> AgentDetails<Self::Api> {
+        require!(self.agents().contains_id(&nonce), "Agent not found");
         self.agent_details(nonce).get()
     }
 
     #[view(get_agent_owner)]
     fn get_agent_owner(&self, nonce: u64) -> ManagedAddress {
+        require!(self.agents().contains_id(&nonce), "Agent not found");
         self.agents().get_value(&nonce)
     }
 
