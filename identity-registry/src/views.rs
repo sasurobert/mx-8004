@@ -32,14 +32,10 @@ pub trait ViewsModule: crate::storage::StorageModule {
         &self,
         nonce: u64,
         service_id: u32,
-    ) -> OptionalValue<EgldOrEsdtTokenPayment<Self::Api>> {
+    ) -> OptionalValue<Payment<Self::Api>> {
         let mapper = self.agent_service_config(nonce);
         if let Some(payment) = mapper.get(&service_id) {
-            OptionalValue::Some(EgldOrEsdtTokenPayment::new(
-                EgldOrEsdtTokenIdentifier::from(payment.token_identifier),
-                payment.token_nonce,
-                payment.amount.into_big_uint(),
-            ))
+            OptionalValue::Some(payment)
         } else {
             OptionalValue::None
         }
