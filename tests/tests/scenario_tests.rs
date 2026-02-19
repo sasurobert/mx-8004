@@ -316,14 +316,15 @@ fn test_submit_proof() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job_proof", 1, None);
-    // submit_proof is open — anyone (e.g. WORKER agent) can call it
-    state.submit_proof(&WORKER, b"job_proof", b"proof_data_here");
+
+    // Authorization Check: submit_proof must be called by AGENT (key match) or OWNER
+    state.submit_proof(&AGENT, b"job_proof", b"proof_data_here");
 
     let job = state.query_job_data(b"job_proof");
     if let OptionalValue::Some(data) = job {
@@ -346,13 +347,13 @@ fn test_validation_request() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job_vr", 1, None);
-    state.submit_proof(&WORKER, b"job_vr", b"proof123");
+    state.submit_proof(&AGENT, b"job_vr", b"proof123");
 
     // Agent owner requests validation
     state.validation_request(
@@ -380,13 +381,13 @@ fn test_validation_request_not_owner() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job_notowner", 1, None);
-    state.submit_proof(&WORKER, b"job_notowner", b"proof");
+    state.submit_proof(&AGENT, b"job_notowner", b"proof");
 
     // CLIENT (not agent owner) tries to request validation
     state.validation_request_expect_err(
@@ -410,13 +411,13 @@ fn test_validation_response() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job_resp", 1, None);
-    state.submit_proof(&WORKER, b"job_resp", b"proof123");
+    state.submit_proof(&AGENT, b"job_resp", b"proof123");
     state.validation_request(
         &AGENT_OWNER,
         b"job_resp",
@@ -447,13 +448,13 @@ fn test_validation_response_not_validator() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job_nv", 1, None);
-    state.submit_proof(&WORKER, b"job_nv", b"proof");
+    state.submit_proof(&AGENT, b"job_nv", b"proof");
     state.validation_request(
         &AGENT_OWNER,
         b"job_nv",
@@ -485,7 +486,7 @@ fn test_clean_old_jobs() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -519,13 +520,13 @@ fn test_full_feedback_flow() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job_fb", 1, None);
-    state.submit_proof(&WORKER, b"job_fb", b"proof");
+    state.submit_proof(&AGENT, b"job_fb", b"proof");
 
     // ERC-8004: employer (CLIENT) submits feedback directly — no authorization needed
     state.give_feedback_simple(&CLIENT, b"job_fb", 1, 80);
@@ -551,13 +552,13 @@ fn test_feedback_guards() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job_guard", 1, None);
-    state.submit_proof(&WORKER, b"job_guard", b"proof");
+    state.submit_proof(&AGENT, b"job_guard", b"proof");
 
     // Non-employer tries to submit feedback -> error
     state.give_feedback_simple_expect_err(
@@ -594,7 +595,7 @@ fn test_full_lifecycle() {
         &AGENT_OWNER,
         b"FullAgent",
         b"https://full.agent.com",
-        b"pubkey_full",
+        AGENT.to_address().as_bytes(),
         vec![(b"category", b"AI"), (b"version", b"1.0")],
         vec![(1u32, 200u64, b"USDC-abcdef", 0u64)],
     );
@@ -603,7 +604,7 @@ fn test_full_lifecycle() {
     state.init_job_with_payment(&CLIENT, b"lifecycle_job", 1, 1, "USDC-abcdef", 0, 200);
 
     // 3. Submit proof (WORKER = agent)
-    state.submit_proof(&WORKER, b"lifecycle_job", b"proof_lifecycle");
+    state.submit_proof(&AGENT, b"lifecycle_job", b"proof_lifecycle");
 
     // 4. Validation request (agent owner)
     state.validation_request(
@@ -1084,13 +1085,14 @@ fn test_give_feedback_simple_not_employer() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job-wrong-caller", 1, None);
-    state.submit_proof(&WORKER, b"job-wrong-caller", b"proof");
+    // Proof must be from authorized agent
+    state.submit_proof(&AGENT, b"job-wrong-caller", b"proof");
 
     // WORKER (not employer) tries to submit feedback
     state.give_feedback_simple_expect_err(
@@ -1113,13 +1115,14 @@ fn test_append_response_permissionless() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&CLIENT, b"job-resp", 1, None);
-    state.submit_proof(&WORKER, b"job-resp", b"proof");
+    // Proof must be from authorized agent
+    state.submit_proof(&AGENT, b"job-resp", b"proof");
 
     // ERC-8004: anyone can append response — CLIENT can do it
     state.append_response(&CLIENT, b"job-resp", b"https://response.uri");
@@ -1142,7 +1145,7 @@ fn test_clean_old_jobs_not_old_enough() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -1175,7 +1178,7 @@ fn test_update_agent_invalid_nft() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -1203,7 +1206,7 @@ fn test_update_agent() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -1236,7 +1239,7 @@ fn test_update_agent_with_meta_and_services() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -1271,7 +1274,7 @@ fn test_upgrade_identity() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -1293,7 +1296,7 @@ fn test_upgrade_validation() {
         &AGENT_OWNER,
         b"TestAgent",
         b"https://agent.example.com",
-        b"pubkey123",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -1354,7 +1357,7 @@ fn test_is_job_verified_view() {
         &OWNER_ADDRESS,
         b"IsVerifiedBot",
         b"https://example.com/manifest",
-        &[0u8; 32],
+        AGENT.to_address().as_bytes(),
         vec![(b"type", b"bot")],
         vec![],
     );
@@ -1363,8 +1366,8 @@ fn test_is_job_verified_view() {
     // Not verified before validation
     assert!(!state.query_is_job_verified(b"job_verify_view"));
 
-    // Submit proof + validation
-    state.submit_proof(&OWNER_ADDRESS, b"job_verify_view", b"proof-hash");
+    // Submit proof requires auth now
+    state.submit_proof(&AGENT, b"job_verify_view", b"proof-hash");
     state.validation_request(
         &OWNER_ADDRESS,
         b"job_verify_view",
@@ -1396,14 +1399,14 @@ fn test_multi_job_reputation_average() {
         &OWNER_ADDRESS,
         b"MultiRepBot",
         b"https://example.com/manifest",
-        &[0u8; 32],
+        AGENT.to_address().as_bytes(),
         vec![(b"type", b"worker")],
         vec![],
     );
 
     // Job 1: rating 80
     state.init_job(&OWNER_ADDRESS, b"rep_avg_1", 1, None);
-    state.submit_proof(&OWNER_ADDRESS, b"rep_avg_1", b"proof-1");
+    state.submit_proof(&AGENT, b"rep_avg_1", b"proof-1");
     state.validation_request(
         &OWNER_ADDRESS,
         b"rep_avg_1",
@@ -1423,7 +1426,7 @@ fn test_multi_job_reputation_average() {
 
     // Job 2: rating 60
     state.init_job(&OWNER_ADDRESS, b"rep_avg_2", 1, None);
-    state.submit_proof(&OWNER_ADDRESS, b"rep_avg_2", b"proof-2");
+    state.submit_proof(&AGENT, b"rep_avg_2", b"proof-2");
     state.validation_request(
         &OWNER_ADDRESS,
         b"rep_avg_2",
@@ -1443,7 +1446,7 @@ fn test_multi_job_reputation_average() {
 
     // Job 3: rating 100
     state.init_job(&OWNER_ADDRESS, b"rep_avg_3", 1, None);
-    state.submit_proof(&OWNER_ADDRESS, b"rep_avg_3", b"proof-3");
+    state.submit_proof(&AGENT, b"rep_avg_3", b"proof-3");
     state.validation_request(
         &OWNER_ADDRESS,
         b"rep_avg_3",
@@ -1484,7 +1487,7 @@ fn test_submit_proof_with_nft_happy_path() {
         &OWNER_ADDRESS,
         b"NFTProofBot",
         b"https://example.com/manifest",
-        &[0u8; 32],
+        AGENT.to_address().as_bytes(),
         vec![(b"type", b"worker")],
         vec![],
     );
@@ -1492,7 +1495,7 @@ fn test_submit_proof_with_nft_happy_path() {
 
     // Owner holds AGENT-abcdef nonce=1 after register_agent
     state.submit_proof_with_nft(
-        &OWNER_ADDRESS,
+        &OWNER_ADDRESS, // using owner call but since it's with NFT, it validates ownership via the token
         b"job_nft_proof",
         b"nft-proof-hash",
         &AGENT_TOKEN,
@@ -1527,7 +1530,7 @@ fn test_submit_proof_with_nft_nonexistent_job() {
         &OWNER_ADDRESS,
         b"NFTErrBot",
         b"https://example.com/manifest",
-        &[0u8; 32],
+        AGENT.to_address().as_bytes(),
         vec![(b"type", b"worker")],
         vec![],
     );
@@ -1554,12 +1557,15 @@ fn test_validation_response_progressive() {
         &OWNER_ADDRESS,
         b"ProgressiveBot",
         b"https://example.com/manifest",
-        &[0u8; 32],
+        AGENT.to_address().as_bytes(),
         vec![(b"type", b"validator")],
         vec![],
     );
     state.init_job(&OWNER_ADDRESS, b"job_progressive", 1, None);
-    state.submit_proof(&OWNER_ADDRESS, b"job_progressive", b"initial-proof");
+
+    // Submit Auth
+    state.submit_proof(&AGENT, b"job_progressive", b"initial-proof");
+
     state.validation_request(
         &OWNER_ADDRESS,
         b"job_progressive",

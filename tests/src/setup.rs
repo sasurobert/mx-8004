@@ -98,6 +98,7 @@ impl AgentTestState {
             .esdt_balance(WRONG_TOKEN, 1_000_000_000u64);
         world.account(WORKER).nonce(1).balance(1_000_000u64);
         world.account(VALIDATOR).nonce(1).balance(1_000_000u64);
+        world.account(AGENT).nonce(1).balance(1_000_000u64);
 
         Self {
             world,
@@ -151,6 +152,7 @@ impl AgentTestState {
 
         world.account(AGENT_OWNER).nonce(1).balance(1_000_000u64);
         world.account(CLIENT).nonce(1).balance(1_000_000u64);
+        world.account(AGENT).nonce(1).balance(1_000_000u64);
 
         Self {
             world,
@@ -1359,6 +1361,7 @@ impl EscrowTestState {
             .nonce(1)
             .balance(10_000_000_000u64)
             .esdt_balance(PAYMENT_TOKEN, 1_000_000_000u64);
+        world.account(AGENT).nonce(1).balance(1_000_000u64);
 
         Self {
             world,

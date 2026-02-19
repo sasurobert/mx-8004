@@ -1,6 +1,6 @@
 multiversx_sc::imports!();
 
-use crate::structs::JobData;
+use crate::structs::{AgentDetails, JobData};
 
 /// Cross-contract storage reads shared across contracts.
 #[multiversx_sc::module]
@@ -34,4 +34,12 @@ pub trait CrossContractModule {
         &self,
         address: ManagedAddress,
     ) -> SingleValueMapper<TokenIdentifier, ManagedAddress<Self::Api>>;
+
+    /// Read agent details from identity-registry's `agentDetails` storage.
+    #[storage_mapper_from_address("agentDetails")]
+    fn external_agent_details(
+        &self,
+        address: ManagedAddress,
+        nonce: u64,
+    ) -> SingleValueMapper<AgentDetails<Self::Api>, ManagedAddress<Self::Api>>;
 }

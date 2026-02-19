@@ -8,3 +8,4 @@ pub const ERR_INVALID_PAYMENT: &str = "Invalid payment token";
 pub const ERR_VALIDATION_REQUEST_NOT_FOUND: &str = "Validation request not found";
 pub const ERR_NOT_VALIDATOR: &str = "Only the designated validator can respond";
 pub const ERR_INVALID_AGENT_NFT: &str = "Invalid agent NFT: wrong token ID or nonce";
+pub const ERR_JOB_STATUS_INVALID: &str = "Job status invalid for proof submission";

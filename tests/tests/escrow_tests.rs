@@ -128,7 +128,7 @@ fn test_release_verified() {
         &AGENT_OWNER,
         b"EscrowAgent",
         b"https://agent.com",
-        b"pubkey",
+        AGENT.to_address().as_bytes(), // Use AGENT address bytes as public key
         vec![],
         vec![],
     );
@@ -136,8 +136,8 @@ fn test_release_verified() {
     // Init job in validation registry
     state.init_job(&EMPLOYER, b"job_release", 1, None);
 
-    // Submit proof
-    state.submit_proof(&WORKER, b"job_release", b"proof_data");
+    // Submit proof as AGENT (authorized via public key)
+    state.submit_proof(&AGENT, b"job_release", b"proof_data");
 
     // Validation request + response (to get job to Verified status)
     state.validation_request(
@@ -187,14 +187,14 @@ fn test_release_not_verified() {
         &AGENT_OWNER,
         b"EscrowAgent",
         b"https://agent.com",
-        b"pubkey",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     // Init job but do NOT go through validation
     state.init_job(&EMPLOYER, b"job_not_verified", 1, None);
-    state.submit_proof(&WORKER, b"job_not_verified", b"proof_data");
+    state.submit_proof(&AGENT, b"job_not_verified", b"proof_data");
 
     // Deposit into escrow
     state.deposit_egld(
@@ -227,14 +227,14 @@ fn test_release_not_employer() {
         &AGENT_OWNER,
         b"EscrowAgent",
         b"https://agent.com",
-        b"pubkey",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     // Full validation flow to get verified status
     state.init_job(&EMPLOYER, b"job_not_emp", 1, None);
-    state.submit_proof(&WORKER, b"job_not_emp", b"proof");
+    state.submit_proof(&AGENT, b"job_not_emp", b"proof");
     state.validation_request(
         &AGENT_OWNER,
         b"job_not_emp",
@@ -277,13 +277,13 @@ fn test_release_already_released() {
         &AGENT_OWNER,
         b"EscrowAgent",
         b"https://agent.com",
-        b"pubkey",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
 
     state.init_job(&EMPLOYER, b"job_double_rel", 1, None);
-    state.submit_proof(&WORKER, b"job_double_rel", b"proof");
+    state.submit_proof(&AGENT, b"job_double_rel", b"proof");
     state.validation_request(
         &AGENT_OWNER,
         b"job_double_rel",
@@ -414,7 +414,7 @@ fn test_release_after_refund() {
         &AGENT_OWNER,
         b"EscrowAgent",
         b"https://agent.com",
-        b"pubkey",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -422,7 +422,7 @@ fn test_release_after_refund() {
     state.world.current_block().block_timestamp_seconds(100);
 
     state.init_job(&EMPLOYER, b"job_ref_then_rel", 1, None);
-    state.submit_proof(&WORKER, b"job_ref_then_rel", b"proof");
+    state.submit_proof(&AGENT, b"job_ref_then_rel", b"proof");
     state.validation_request(
         &AGENT_OWNER,
         b"job_ref_then_rel",
@@ -468,7 +468,7 @@ fn test_refund_after_release() {
         &AGENT_OWNER,
         b"EscrowAgent",
         b"https://agent.com",
-        b"pubkey",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![],
     );
@@ -476,7 +476,7 @@ fn test_refund_after_release() {
     state.world.current_block().block_timestamp_seconds(100);
 
     state.init_job(&EMPLOYER, b"job_rel_then_ref", 1, None);
-    state.submit_proof(&WORKER, b"job_rel_then_ref", b"proof");
+    state.submit_proof(&AGENT, b"job_rel_then_ref", b"proof");
     state.validation_request(
         &AGENT_OWNER,
         b"job_rel_then_ref",
@@ -545,14 +545,14 @@ fn test_full_lifecycle_egld() {
         &AGENT_OWNER,
         b"LifecycleAgent",
         b"https://lifecycle.agent.com",
-        b"pubkey_lc",
+        AGENT.to_address().as_bytes(),
         vec![(b"type", b"escrow-test")],
         vec![],
     );
 
     // 2. Init job + validation flow
     state.init_job(&EMPLOYER, b"lifecycle_egld", 1, None);
-    state.submit_proof(&WORKER, b"lifecycle_egld", b"proof_lc");
+    state.submit_proof(&AGENT, b"lifecycle_egld", b"proof_lc");
     state.validation_request(
         &AGENT_OWNER,
         b"lifecycle_egld",
@@ -608,14 +608,14 @@ fn test_full_lifecycle_esdt() {
         &AGENT_OWNER,
         b"EsdtAgent",
         b"https://esdt.agent.com",
-        b"pubkey_esdt",
+        AGENT.to_address().as_bytes(),
         vec![],
         vec![(1u32, 500u64, b"USDC-abcdef", 0u64)],
     );
 
     // 2. Init job + validation flow
     state.init_job(&EMPLOYER, b"lifecycle_esdt", 1, None);
-    state.submit_proof(&WORKER, b"lifecycle_esdt", b"proof_esdt");
+    state.submit_proof(&AGENT, b"lifecycle_esdt", b"proof_esdt");
     state.validation_request(
         &AGENT_OWNER,
         b"lifecycle_esdt",

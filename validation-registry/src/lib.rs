@@ -86,6 +86,38 @@ pub trait ValidationRegistry:
         let job_mapper = self.job_data(&job_id);
         require!(!job_mapper.is_empty(), ERR_JOB_NOT_FOUND);
 
+        let job_data = job_mapper.get();
+
+        // Security Check 1: Agent Owner or Registered Agent
+        let caller = self.blockchain().get_caller();
+        let identity_addr = self.identity_registry_address().get();
+
+        // Optimization: Check Agent first (most frequent caller)
+        let agent_details = self
+            .external_agent_details(identity_addr.clone(), job_data.agent_nonce)
+            .get();
+
+        let mut is_authorized = false;
+        if caller.as_managed_buffer() == &agent_details.public_key {
+            is_authorized = true;
+        } else {
+            // Fallback: Check Agent Owner
+            let agent_owner = self
+                .external_agents(identity_addr)
+                .get_value(&job_data.agent_nonce);
+
+            if caller == agent_owner {
+                is_authorized = true;
+            }
+        }
+        require!(is_authorized, ERR_NOT_AGENT_OWNER);
+
+        // Security Check 2: Ensure job is in correct state
+        require!(
+            job_data.status == JobStatus::New || job_data.status == JobStatus::Pending,
+            ERR_JOB_STATUS_INVALID
+        );
+
         job_mapper.update(|job| {
             job.proof = proof;
             job.status = JobStatus::Pending;
@@ -102,6 +134,12 @@ pub trait ValidationRegistry:
 
         let payment = self.call_value().single_esdt();
         let job_data = job_mapper.get();
+
+        // Security Check: Ensure job is in correct state
+        require!(
+            job_data.status == JobStatus::New || job_data.status == JobStatus::Pending,
+            ERR_JOB_STATUS_INVALID
+        );
 
         // Read agent token ID from identity-registry
         let identity_addr = self.identity_registry_address().get();

@@ -8,6 +8,7 @@ pub const CLIENT: TestAddress = TestAddress::new("client");
 pub const WORKER: TestAddress = TestAddress::new("worker");
 pub const VALIDATOR: TestAddress = TestAddress::new("validator");
 pub const EMPLOYER: TestAddress = TestAddress::new("employer");
+pub const AGENT: TestAddress = TestAddress::new("agent");
 
 // ── SC Addresses ──
 pub const IDENTITY_SC_ADDRESS: TestSCAddress = TestSCAddress::new("identity-registry");
