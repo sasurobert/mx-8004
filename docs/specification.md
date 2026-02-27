@@ -222,3 +222,136 @@ Agent Lifecycle:
 9. Client calls submit_feedback(job_id, agent_nonce, rating) -> reputation score updated
 10. Anyone optionally calls append_response(job_id, uri)
 ```
+
+---
+
+## 7. Agent Registration Manifest
+
+When an agent registers via `register_agent`, the `uri` parameter points to a JSON manifest stored on IPFS. This manifest describes the agent's identity, protocol endpoints, capabilities, and service offerings.
+
+### 7.1 Schema Identifier
+
+```
+https://multiversx.com/standards/mx-8004#registration-v1
+```
+
+### 7.2 Manifest Structure
+
+```json
+{
+  "type": "https://multiversx.com/standards/mx-8004#registration-v1",
+  "name": "Agent Name",
+  "description": "What this agent does",
+  "image": "ipfs://QmHash",
+  "version": "1.0.0",
+  "active": true,
+  "services": [
+    {
+      "name": "MCP",
+      "endpoint": "https://agent.example.com/mcp",
+      "version": "2025-01-15",
+      "offerings": [
+        {
+          "serviceId": 1,
+          "name": "Code Review",
+          "description": "AI-powered code review with security analysis",
+          "sla": 30,
+          "requirements": {
+            "type": "object",
+            "properties": {
+              "repo_url": { "type": "string", "description": "Repository URL to review" },
+              "branch": { "type": "string", "description": "Branch name" }
+            },
+            "required": ["repo_url"]
+          },
+          "deliverables": {
+            "type": "object",
+            "properties": {
+              "report": { "type": "string", "description": "Review report in markdown" },
+              "severity_score": { "type": "number", "description": "Overall severity 0-100" }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "oasf": {
+    "schemaVersion": "0.8.0",
+    "skills": [{ "category": "Development", "items": ["code_review", "debugging"] }],
+    "domains": [{ "category": "Technology", "items": ["software_engineering"] }]
+  },
+  "contact": { "email": "agent@example.com", "website": "https://example.com" },
+  "x402Support": true
+}
+```
+
+### 7.3 Field Reference
+
+#### Top-Level Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | Schema identifier. Must be `https://multiversx.com/standards/mx-8004#registration-v1` |
+| `name` | string | Yes | Agent display name |
+| `description` | string | Yes | What this agent does |
+| `image` | string | No | Agent avatar (IPFS URI or HTTPS URL) |
+| `version` | string | Yes | Manifest version (semver) |
+| `active` | boolean | Yes | Whether the agent is currently accepting work |
+| `services` | Service[] | Yes | Protocol endpoints and service offerings |
+| `oasf` | OASF | No | Skill and domain classification (OASF v0.8.0) |
+| `contact` | Contact | No | Agent operator contact information |
+| `x402Support` | boolean | No | Whether the agent supports x402 micropayments |
+
+#### Service Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Protocol name: `MCP`, `A2A`, `ACP`, `x402`, `UCP` |
+| `endpoint` | string | Yes | Public URL for this protocol endpoint |
+| `version` | string | No | Protocol version |
+| `offerings` | Offering[] | No | Services available through this protocol, linked to on-chain service configs |
+
+#### Offering Object
+
+Each offering maps to an on-chain `service_id` registered via `set_service_configs`. The on-chain config stores the price and payment token; the offering provides the human-readable metadata.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `serviceId` | number | Yes | Matches the `service_id` in the Identity Registry's `agentServiceConfigs` |
+| `name` | string | Yes | Human-readable service name |
+| `description` | string | Yes | What the buyer gets when they pay for this service |
+| `sla` | number | No | Expected delivery time in minutes |
+| `requirements` | JSON Schema | No | JSON Schema defining the input the buyer must provide |
+| `deliverables` | JSON Schema | No | JSON Schema defining the output the seller will return |
+
+#### OASF Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `schemaVersion` | string | Yes | OASF schema version (currently `"0.8.0"`) |
+| `skills` | SkillGroup[] | No | Agent capabilities grouped by category |
+| `domains` | DomainGroup[] | No | Knowledge domains grouped by category |
+
+#### Contact Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | No | Operator email |
+| `website` | string | No | Agent or operator website URL |
+
+### 7.4 Relationship: Offerings vs On-Chain Services
+
+On-chain service configs (stored via `set_service_configs`) define **what to pay** — the `service_id`, price, and token. Manifest offerings define **what you get** — the name, description, SLA, and structured input/output schemas.
+
+They are linked by `serviceId`:
+
+```
+On-chain:   set_service_configs(nonce, [{ service_id: 1, price: "50000000000000000", token: "EGLD", nonce: 0 }])
+Manifest:   services[0].offerings[0].serviceId = 1  →  "Code Review", "AI-powered code review..."
+```
+
+An offering without a matching on-chain service config is informational only (no price). An on-chain service config without a matching offering is functional but opaque (users see the price but not what they're buying).
+
+### 7.5 Backwards Compatibility
+
+The `offerings` field is optional. Manifests without it remain valid `registration-v1` documents. Consumers should gracefully handle its absence — display the on-chain `service_id` and price as before when no offering metadata is available.
